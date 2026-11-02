@@ -3,6 +3,12 @@ Head Pose Estimation and Kinematics Analysis for Driver Monitoring System.
 Uses 3D facial anthropometric model and OpenCV solvePnP to extract Pitch, Yaw, and Roll angles.
 Corrects coordinate conventions to eliminate angle wrapping and false emergency triggers.
 Includes multi-observation neutral calibration and microsleep nodding detection.
+
+==============================================================================
+Subsystem: 3D Head Pose Kinematics & Coordinate Decomposition
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 from collections import deque

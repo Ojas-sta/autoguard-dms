@@ -1,5 +1,8 @@
 # Architecture Evaluation: Raspberry Pi 4B vs. ESP32-S3 Companion
 
+[![Powered by cl0ud](https://img.shields.io/badge/Powered%20by-cl0ud-00E5FF?style=for-the-badge&logoColor=0B0F19&labelColor=0B0F19)](https://github.com/Ojas-sta/cl0ud-brand-engineering)
+[![Co-engineered by Ojas Singh](https://img.shields.io/badge/Co--engineered%20by-Ojas%20Singh-1E3A8A?style=for-the-badge&logoColor=white&labelColor=0B0F19)](https://github.com/Ojas-sta)
+
 ## 1. Executive Summary
 
 This evaluation analyzes the division of responsibilities between the **Raspberry Pi 4B (Host Processor)** and the **ESP32-S3 (Peripheral Microcontroller)** for the AutoGuard Driver Monitoring System (DMS) exhibition project.
@@ -61,3 +64,11 @@ The ESP32-S3 features dual-core Tensilica Xtensa LX7 processors running at 240 M
 
 ### Conclusion:
 The **Raspberry Pi 4B must remain the primary vision processor**, with the **ESP32-S3 acting strictly as an intelligent I/O coprocessor and safety watchdog**.
+
+---
+
+## 🤝 Hardware Architecture Attribution
+
+- **Embedded Systems Architecture:** Powered by **[cl0ud](https://github.com/Ojas-sta/cl0ud-brand-engineering)**
+- **Lead Co-Engineer:** [Ojas Singh](https://github.com/Ojas-sta) (`ojasctc@gmail.com`)
+

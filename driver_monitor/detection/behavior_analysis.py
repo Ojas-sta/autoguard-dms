@@ -2,6 +2,12 @@
 Behavioral Analysis and PERCLOS Computation for Driver Monitoring System.
 Maintains rolling temporal windows to compute PERCLOS (percentage of eye closure time),
 angular head velocities, jerk, and attention loss metrics.
+
+==============================================================================
+Subsystem: Driver Behavioral Dynamics & $O(1)$ PERCLOS Analytics
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 from collections import deque

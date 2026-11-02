@@ -3,6 +3,12 @@ Driver Distraction Detection and Road Attention Analytics Engine.
 Evaluates gaze direction, off-road glance durations, head orientation, and visual dwell time.
 Classifies distraction states (NORMAL, BRIEF_GLANCE, ATTENTION_WARNING, VISUAL_DISTRACTION,
 DOWNWARD_DISTRACTION, CRITICAL_DEMO_ALERT, UNKNOWN) and maintains rolling attention analytics with CSV export.
+
+==============================================================================
+Subsystem: Driver Distraction Engine & Road Attention Analytics
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 from collections import deque

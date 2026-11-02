@@ -2,6 +2,12 @@
 Iris Landmark Tracking and Eye Gaze Displacement Analysis.
 Extracts iris centers (MediaPipe landmarks 468 and 473) and ocular boundaries
 to compute normalized horizontal and vertical iris position ratios.
+
+==============================================================================
+Subsystem: Iris Tracking & Normalized Ocular Biometrics
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import logging

@@ -5,6 +5,8 @@ FROM python:3.11-slim-bookworm
 
 # Set metadata
 LABEL maintainer="AutoGuard DMS Team"
+LABEL architecture="Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)"
+LABEL co-engineered-by="Ojas Singh <ojasctc@gmail.com>"
 LABEL description="Exhibition-ready Driver Monitoring System (Drowsiness, Road Gaze & Distraction Detection)"
 
 # Prevent interactive prompts and Python output buffering

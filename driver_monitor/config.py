@@ -2,6 +2,12 @@
 Configuration module for the Driver Monitoring System (DMS).
 Defines operational thresholds, timing intervals, hardware settings, gaze/distraction parameters,
 and platform performance profiles.
+
+==============================================================================
+Subsystem: System Operational Configuration & Power Profile Specifications
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 from dataclasses import dataclass, field

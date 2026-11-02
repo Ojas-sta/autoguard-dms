@@ -1,6 +1,8 @@
 # AutoGuard Driver Monitoring System (DMS)
 ### Exhibition-Grade Driver Monitoring, Road Gaze Tracking, Distraction Detection & Raspberry Pi Deployment
 
+[![Powered by cl0ud](https://img.shields.io/badge/Powered%20by-cl0ud-00E5FF?style=for-the-badge&logoColor=0B0F19&labelColor=0B0F19)](https://github.com/Ojas-sta/cl0ud-brand-engineering)
+[![Co-engineered by Ojas Singh](https://img.shields.io/badge/Co--engineered%20by-Ojas%20Singh-1E3A8A?style=for-the-badge&logoColor=white&labelColor=0B0F19)](https://github.com/Ojas-sta)
 ![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Raspberry%20Pi%204B%20%7C%20Docker-blue.svg)
 ![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-brightgreen.svg)
 ![Tests](https://img.shields.io/badge/Unit%20Tests-63%2F63%20Passing-success.svg)
@@ -309,3 +311,27 @@ pytest driver_monitor/tests/ -v
 * `test_integration_scenarios.py`: Camera switching, video seek/loop, disconnect safety.
 
 **Result:** `63 passed in 5.27s (100% Passing)`
+
+---
+
+## 🤝 Engineering Attribution & Credits
+
+<div align="center">
+  <a href="https://github.com/Ojas-sta/cl0ud-brand-engineering">
+    <img src="https://raw.githubusercontent.com/Ojas-sta/cl0ud-brand-engineering/main/assets/badges/cl0ud-credit-card.svg" alt="Powered by cl0ud | Co-engineered by Ojas Singh" width="100%" style="max-width: 820px;" />
+  </a>
+</div>
+
+This project is developed collaboratively with systems engineering, embedded hardware abstraction, and edge computer vision architecture powered by **cl0ud**:
+
+- **Systems Architecture & Edge AI:** Powered by **[cl0ud](https://github.com/Ojas-sta/cl0ud-brand-engineering)**
+- **Lead Co-Engineer:** [Ojas Singh](https://github.com/Ojas-sta) (`ojasctc@gmail.com`)
+- **Key Subsystems Co-Engineered:**
+  - **478-Point Facial Landmark Processing & Iris Tracking:** Dense facial geometry extraction, normalized horizontal/vertical iris ratios, and ocular boundary tracking.
+  - **Corrected 3D Head Pose (+Y Down Standard):** Coordinate-corrected anthropometric face model solving Euler angles (Pitch, Yaw, Roll) via `cv2.solvePnP` with iterative Levenberg-Marquardt warm-start acceleration and 25-frame neutral calibration.
+  - **Multimodal Road Gaze Estimation (6 Driving Zones):** Fusion of iris displacement with calibrated head orientation, continuous zone dwell-time tracking, and 6-target guided calibration wizard.
+  - **Driver Distraction & Road Attention Analytics Engine:** Visual, downward, and side distraction classification with rolling attention percentage accumulation and CSV telemetry export.
+  - **Raspberry Pi 4B Deep Optimization Pipeline:** Decoupled `ThreadedCamera` zero-lag capture thread, neural subgraph pruning, $320\times 240$ pre-downsampling, zero-copy sub-ROI alpha blending, and $O(1)$ constant-time sliding window buffers.
+  - **ESP32-S3 Hardware Offload & Watchdog Architecture:** UART serial protocol, deterministic PWM audio/LED driving, hardware button interrupts, and communication failsafe.
+- **Attribution & Brand Engineering Standard:** [cl0ud Brand Engineering Reference](https://github.com/Ojas-sta/cl0ud-brand-engineering)
+

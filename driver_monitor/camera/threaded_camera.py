@@ -2,6 +2,12 @@
 Threaded Camera Capture Wrapper for Driver Monitoring System.
 Decouples camera I/O from computer vision inference to eliminate video buffer lag
 and prevent hardware frame queue buildup on resource-constrained devices like Raspberry Pi 4B.
+
+==============================================================================
+Subsystem: Decoupled Asynchronous Camera Capture & Queue Management
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import logging

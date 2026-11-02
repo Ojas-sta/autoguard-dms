@@ -3,6 +3,12 @@ ESP32-S3 Peripheral Controller Interface for Driver Monitoring System.
 Establishes bidirectional UART / Serial communication between Raspberry Pi / Mac and ESP32-S3.
 Transmits alert states, commands LEDs/buzzers, receives physical button interrupts,
 and maintains heartbeat health monitoring with graceful reconnection.
+
+==============================================================================
+Subsystem: ESP32-S3 Hardware Controller & Real-Time Serial Bridge
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 from dataclasses import dataclass

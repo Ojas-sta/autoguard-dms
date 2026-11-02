@@ -1,6 +1,12 @@
 """
 Hardware Factory for Driver Monitoring System.
 Instantiates platform-appropriate hardware adapters based on active platform configuration.
+
+==============================================================================
+Subsystem: Hardware Abstraction Layer (HAL) Factory & Actuator Bindings
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import logging

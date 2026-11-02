@@ -2,6 +2,12 @@
 Guided Gaze Calibration Manager for Driver Monitoring System.
 Guides the driver through 6 calibration targets (Road, Left Mirror, Right Mirror, Down, Up, Away),
 collects empirical iris and head kinematics samples, and computes personalized classification boundaries.
+
+==============================================================================
+Subsystem: Guided Individual Gaze Calibration Wizard & Persistence
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 from dataclasses import dataclass, asdict

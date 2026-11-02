@@ -3,6 +3,12 @@ Abnormal Head Movement and Dizziness Demonstration Engine.
 Implements experimental behavioral indicators (sustained tilt, unusual movement patterns,
 sustained abnormal orientations, face unavailability, and slumping).
 Provides descriptive non-diagnostic alerts for research and demonstration.
+
+==============================================================================
+Subsystem: Abnormal Movement Analysis & Slump Emergency Detection
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import logging

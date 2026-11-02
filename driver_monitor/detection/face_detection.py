@@ -2,6 +2,12 @@
 Face Detection and Landmark Tracking for Driver Monitoring System.
 Uses MediaPipe Tasks Face Landmarker for real-time 468/478 3D landmark extraction.
 Supports primary face selection, temporal smoothing, confidence estimation, and face loss tracking.
+
+==============================================================================
+Subsystem: Face Mesh Tracking & Dense Geometry Extraction
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import logging

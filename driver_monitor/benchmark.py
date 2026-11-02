@@ -3,6 +3,12 @@ Performance Benchmark Runner for AutoGuard DMS.
 Evaluates end-to-end computer vision throughput, inference latency, and hardware load
 across different power profiles (LOW_POWER, BALANCED, HIGH_QUALITY, MAC_DEVELOPMENT).
 Produces a structured CSV report and formatted console summary.
+
+==============================================================================
+Subsystem: Automated Performance Benchmarking & Resource Profiling
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import argparse
@@ -202,6 +208,7 @@ def run_benchmark(
     # Formatted Console Summary Table
     print("\n" + "=" * 62)
     print(f"      AUTOGUARD DMS BENCHMARK RESULTS — {profile_name.upper()}")
+    print("      Architecture: Powered by cl0ud | Co-engineered by Ojas Singh")
     print("=" * 62)
     print(f" Total Elapsed Time:       {total_elapsed:.2f} s")
     print(f" Total Frames Processed:   {frame_idx} frames")

@@ -1,6 +1,12 @@
 """
 Platform Manager for Driver Monitoring System.
 Detects operating system, hardware architecture, and loads the active platform profile.
+
+==============================================================================
+Subsystem: Cross-Platform Hardware Detection & Environment Arbitrator
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import json

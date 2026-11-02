@@ -1,5 +1,8 @@
 # AutoGuard DMS — Docker & Container Deployment Guide
 
+[![Powered by cl0ud](https://img.shields.io/badge/Powered%20by-cl0ud-00E5FF?style=for-the-badge&logoColor=0B0F19&labelColor=0B0F19)](https://github.com/Ojas-sta/cl0ud-brand-engineering)
+[![Co-engineered by Ojas Singh](https://img.shields.io/badge/Co--engineered%20by-Ojas%20Singh-1E3A8A?style=for-the-badge&logoColor=white&labelColor=0B0F19)](https://github.com/Ojas-sta)
+
 This guide covers building and running the AutoGuard Driver Monitoring System (DMS) in Docker on macOS, Linux AMD64, and Raspberry Pi 4B (ARM64).
 
 ---
@@ -89,3 +92,11 @@ When running containers with real camera hardware or ESP32 UART controllers on L
    sudo usermod -a -G dialout $USER
    ```
    Pass `--device /dev/ttyUSB0:/dev/ttyUSB0` to docker.
+
+---
+
+## 🤝 Engineering Attribution & Credits
+
+- **Container Architecture & Deployment:** Powered by **[cl0ud](https://github.com/Ojas-sta/cl0ud-brand-engineering)**
+- **Co-Engineered by:** [Ojas Singh](https://github.com/Ojas-sta) (`ojasctc@gmail.com`)
+

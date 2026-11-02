@@ -1,6 +1,12 @@
 """
 Camera Manager for Driver Monitoring System.
 Coordinates camera selection, device switching, video file testing, and frame distribution.
+
+==============================================================================
+Subsystem: Cross-Platform Video Capture & Device Abstraction Manager
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import logging

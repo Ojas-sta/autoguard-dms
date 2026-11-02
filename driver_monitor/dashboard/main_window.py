@@ -2,6 +2,12 @@
 Main Dashboard Window for Driver Monitoring System.
 Automotive-grade cockpit interface integrating live camera, biometric telemetry cards,
 performance monitors, real-time strip charts, alert banner, and interactive simulation controls.
+
+==============================================================================
+Subsystem: Modern Automotive Cockpit UI & Real-Time Visualization
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import os
@@ -190,6 +196,10 @@ class MainWindow(QMainWindow):
         lbl_logo.setStyleSheet("font-size: 16px; font-weight: 900; color: #00d2ff; letter-spacing: 2px;")
         header_layout.addWidget(lbl_logo)
 
+        lbl_brand = QLabel("POWERED BY cl0ud")
+        lbl_brand.setStyleSheet("background-color: #0b0f19; color: #00e5ff; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 4px; border: 1px solid #00e5ff; letter-spacing: 1px;")
+        header_layout.addWidget(lbl_brand)
+
         plat_info = self.platform_mgr.get_info()
         plat_badge_text = f"PLATFORM: {self.platform_mgr.active_platform.upper()} [{plat_info['architecture'].upper()}]"
         lbl_plat = QLabel(plat_badge_text)
@@ -361,6 +371,32 @@ class MainWindow(QMainWindow):
         ctrl_layout.addWidget(self.btn_reset_stats)
 
         main_layout.addWidget(controls)
+
+        # -------------------------------------------------------------
+        # 4. Bottom Footer & cl0ud Engineering Attribution Bar
+        # -------------------------------------------------------------
+        footer = QWidget()
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(4, 2, 4, 2)
+
+        lbl_footer_status = QLabel("🟢 Edge Computer Vision Active • 478-pt Mesh & Gaze Analytics Online")
+        lbl_footer_status.setStyleSheet("color: #64748b; font-size: 11px;")
+        footer_layout.addWidget(lbl_footer_status)
+
+        footer_layout.addStretch()
+
+        lbl_footer_credit = QLabel(
+            '<a href="https://github.com/Ojas-sta/cl0ud-brand-engineering" style="color: #00e5ff; text-decoration: none; font-weight: bold;">☁ Powered by cl0ud</a> '
+            '<span style="color: #475569;">|</span> '
+            '<a href="https://github.com/Ojas-sta" style="color: #94a3b8; text-decoration: none; font-weight: bold;">Co-engineered by Ojas Singh</a>'
+        )
+        lbl_footer_credit.setOpenExternalLinks(True)
+        lbl_footer_credit.setStyleSheet(
+            "font-size: 11px; padding: 3px 10px; background-color: #0b0f19; border-radius: 4px; border: 1px solid #1e293b;"
+        )
+        footer_layout.addWidget(lbl_footer_credit)
+
+        main_layout.addWidget(footer)
 
     def _connect_signals(self) -> None:
         """Connects signals between widgets and pipeline."""

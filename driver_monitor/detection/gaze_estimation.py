@@ -3,6 +3,12 @@ Road Gaze Estimation and Classification Module.
 Fuses normalized iris positions with calibrated 3D head pose to classify driver gaze into:
 ROAD, LEFT_MIRROR, RIGHT_MIRROR, DOWN, UP, AWAY, and UNKNOWN.
 Maintains continuous dwell time and generates 2D gaze visualization vectors.
+
+==============================================================================
+Subsystem: Multimodal Road Gaze Estimation & Attention Zone Classification
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import logging

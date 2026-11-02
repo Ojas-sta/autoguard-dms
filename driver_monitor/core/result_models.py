@@ -1,6 +1,12 @@
 """
 Result Models and Data Structures for Driver Monitoring System.
 Shared data contracts between detection modules, decision engines, hardware layer, and UI.
+
+==============================================================================
+Subsystem: Shared Result Models & Event Data Contracts
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 from dataclasses import dataclass, field

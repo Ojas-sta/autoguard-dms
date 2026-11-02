@@ -1,6 +1,10 @@
 /*
  * AutoGuard DMS — ESP32-S3 Companion Peripheral Controller Firmware
  * 
+ * Subsystem: ESP32-S3 Actuator Controller & Hardware Safety Watchdog
+ * Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+ * Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+ * 
  * Hardware:
  *   - ESP32-S3 DevKit / NodeMCU
  *   - RGB LED / WS2812B NeoPixel on GPIO 48 (or discrete LEDs on GPIO 4, 5, 6, 7)

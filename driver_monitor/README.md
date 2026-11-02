@@ -1,9 +1,11 @@
 # AutoGuard Driver Monitoring System (DMS)
 ### Standalone Driver Drowsiness, Dizziness & Attention Detection Module (macOS Development & Raspberry Pi Deployment)
 
+[![Powered by cl0ud](https://img.shields.io/badge/Powered%20by-cl0ud-00E5FF?style=for-the-badge&logoColor=0B0F19&labelColor=0B0F19)](https://github.com/Ojas-sta/cl0ud-brand-engineering)
+[![Co-engineered by Ojas Singh](https://img.shields.io/badge/Co--engineered%20by-Ojas%20Singh-1E3A8A?style=for-the-badge&logoColor=white&labelColor=0B0F19)](https://github.com/Ojas-sta)
 ![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Raspberry%20Pi-blue.svg)
 ![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-brightgreen.svg)
-![Tests](https://img.shields.io/badge/Unit%20Tests-33%2F33%20Passing-success.svg)
+![Tests](https://img.shields.io/badge/Unit%20Tests-63%2F63%20Passing-success.svg)
 ![Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)
 
 ---
@@ -341,3 +343,19 @@ When transferring the project to a Raspberry Pi 4B:
    python main.py --platform raspberrypi
    ```
    The application automatically engages `GPIOBuzzer`, `GPIOLED`, and `Picamera2` while executing the identical shared computer vision models without changing a single line of detection code.
+
+---
+
+## 🤝 Engineering Attribution & Credits
+
+<div align="center">
+  <a href="https://github.com/Ojas-sta/cl0ud-brand-engineering">
+    <img src="https://raw.githubusercontent.com/Ojas-sta/cl0ud-brand-engineering/main/assets/badges/cl0ud-credit-card.svg" alt="Powered by cl0ud | Co-engineered by Ojas Singh" width="100%" style="max-width: 820px;" />
+  </a>
+</div>
+
+- **Systems Architecture & Edge AI:** Powered by **[cl0ud](https://github.com/Ojas-sta/cl0ud-brand-engineering)**
+- **Lead Co-Engineer:** [Ojas Singh](https://github.com/Ojas-sta) (`ojasctc@gmail.com`)
+- **Subsystem Architecture:** Cross-platform hardware abstraction (HAL), high-efficiency MediaPipe pipeline, 3D SolvePnP head pose, and distraction analytics.
+- **Brand & Engineering Standard:** [cl0ud Brand Engineering Reference](https://github.com/Ojas-sta/cl0ud-brand-engineering)
+

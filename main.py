@@ -6,6 +6,12 @@ Supports running:
     python main.py --platform raspberrypi
     python main.py --video driver_monitor/resources/videos/test_eyes_closed.mp4
     python main.py --headless
+
+==============================================================================
+System: AutoGuard Driver Monitoring System (DMS)
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import sys

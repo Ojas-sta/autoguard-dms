@@ -2,6 +2,12 @@
 Alert Decision Manager for Driver Monitoring System.
 Arbitrates multi-level alert states from drowsiness, abnormal kinematics, distraction, and emergency inputs.
 Controls buzzer patterns, LED outputs, and alert acknowledgment.
+
+==============================================================================
+Subsystem: Priority Alert Arbitration & Hardware Actuation Dispatcher
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import logging

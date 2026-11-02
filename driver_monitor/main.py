@@ -2,6 +2,12 @@
 Main Application Entry Point for Driver Monitoring System (DMS).
 Parses command-line arguments, selects active platform profile, and launches
 either the native macOS GUI dashboard or headless verification pipeline.
+
+==============================================================================
+Subsystem: Application Lifecycle & Multi-Platform Runtime Dispatcher
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import argparse

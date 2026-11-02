@@ -2,6 +2,12 @@
 Yawning Detection and Speech Filtering for Driver Monitoring System.
 Calculates Mouth Aspect Ratio (MAR) and uses temporal thresholding
 to differentiate genuine prolonged yawns from regular conversational speech.
+
+==============================================================================
+Subsystem: Mouth Aspect Ratio (MAR) & Yawn Detection with Speech Filtering
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 from collections import deque

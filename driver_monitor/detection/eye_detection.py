@@ -2,6 +2,12 @@
 Eye Monitoring and Blink Analysis for Driver Monitoring System.
 Calculates Eye Aspect Ratio (EAR) for left and right eyes using standard MediaPipe landmarks.
 Tracks eye closure duration, blink frequency, and prolonged eye closure events.
+
+==============================================================================
+Subsystem: Eye Biometrics, EAR Metric & Blink Frequency Engine
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 from collections import deque

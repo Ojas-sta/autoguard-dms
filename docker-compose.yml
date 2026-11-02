@@ -1,3 +1,8 @@
+# ==============================================================================
+# AutoGuard DMS — Docker Compose Multi-Profile Deployment
+# Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+# Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+# ==============================================================================
 version: '3.8'
 
 services:

@@ -3,6 +3,12 @@ Drowsiness Decision Engine for Driver Monitoring System.
 Combines multiple physiological and behavioral indicators (eye closure duration,
 PERCLOS, blink rate, head nodding, head-down posture, and yawning)
 into a unified drowsiness classification with hysteresis filtering.
+
+==============================================================================
+Subsystem: Drowsiness Multi-Signal Fusion & Hysteresis State Machine
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import logging

@@ -2,6 +2,12 @@
 Core Detection Pipeline for Driver Monitoring System.
 Orchestrates computer vision models, kinematic estimators, multi-signal decision engines,
 hardware actuators, and video frame annotation in real time.
+
+==============================================================================
+Subsystem: Core Computer Vision Pipeline & Frame Orchestration
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 from collections import deque
@@ -445,7 +451,31 @@ class DetectionPipeline:
             cv2.LINE_AA
         )
 
-        # 8. Critical Alert Warning Glow Border
+        # 8. cl0ud & Ojas Singh System Attribution Watermark (Bottom-right, zero-copy sub-ROI blend)
+        if w >= 480:
+            pill_w, pill_h = 215, 34
+            bx1 = w - pill_w - 12
+            by1 = h - pill_h - 12
+            if bx1 > 0 and by1 > 0 and (bx1 + pill_w) <= w and (by1 + pill_h) <= h:
+                attr_roi = annotated[by1:by1 + pill_h, bx1:bx1 + pill_w]
+                attr_bg = np.full_like(attr_roi, (11, 15, 25))
+                cv2.addWeighted(attr_bg, 0.88, attr_roi, 0.12, 0, attr_roi)
+                cv2.rectangle(annotated, (bx1, by1), (bx1 + pill_w, by1 + pill_h), (255, 229, 0), 1)
+                cv2.circle(annotated, (bx1 + 11, by1 + 13), 3, (255, 229, 0), -1)
+                cv2.putText(annotated, "Powered by cl0ud", (bx1 + 20, by1 + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (255, 229, 0), 1, cv2.LINE_AA)
+                cv2.putText(annotated, "Co-engineered by Ojas Singh", (bx1 + 11, by1 + 28), cv2.FONT_HERSHEY_SIMPLEX, 0.31, (180, 195, 210), 1, cv2.LINE_AA)
+        else:
+            pill_w, pill_h = 175, 18
+            bx1 = w - pill_w - 8
+            by1 = h - pill_h - 8
+            if bx1 > 0 and by1 > 0 and (bx1 + pill_w) <= w and (by1 + pill_h) <= h:
+                attr_roi = annotated[by1:by1 + pill_h, bx1:bx1 + pill_w]
+                attr_bg = np.full_like(attr_roi, (11, 15, 25))
+                cv2.addWeighted(attr_bg, 0.88, attr_roi, 0.12, 0, attr_roi)
+                cv2.rectangle(annotated, (bx1, by1), (bx1 + pill_w, by1 + pill_h), (255, 229, 0), 1)
+                cv2.putText(annotated, "cl0ud | Ojas Singh", (bx1 + 8, by1 + 13), cv2.FONT_HERSHEY_SIMPLEX, 0.32, (255, 229, 0), 1, cv2.LINE_AA)
+
+        # 9. Critical Alert Warning Glow Border
         if result.alert.level == AlertLevel.CRITICAL:
             cv2.rectangle(annotated, (0, 0), (w, h), (40, 40, 235), 6)
 

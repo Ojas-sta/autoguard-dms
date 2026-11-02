@@ -1,6 +1,12 @@
 """
 Model Downloader for Driver Monitoring System.
 Downloads the official MediaPipe Face Landmarker model asset if not present.
+
+==============================================================================
+Subsystem: Neural Asset Verification & Downloader
+Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+==============================================================================
 """
 
 import os
