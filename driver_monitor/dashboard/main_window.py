@@ -84,6 +84,8 @@ class PipelineWorker(QThread):
 class MainWindow(QMainWindow):
     """Cockpit Driver Monitoring System main window."""
 
+    log_received = pyqtSignal(str, str)  # Thread-safe signal for UI log updates
+
     def __init__(self, platform_mgr: PlatformManager, initial_video_path: Optional[str] = None):
         super().__init__()
         self.platform_mgr = platform_mgr
@@ -324,6 +326,8 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self) -> None:
         """Connects signals between widgets and pipeline."""
+        self.log_received.connect(self._on_log_received)
+
         self.alert_widget.emergency_triggered.connect(self._on_emergency_triggered)
         self.alert_widget.reset_clicked.connect(self._on_reset_clicked)
 
@@ -407,7 +411,11 @@ class MainWindow(QMainWindow):
 
     def _on_new_log(self, entry: dict) -> None:
         msg = f"[{entry['timestamp'].split()[-1]}] {entry['message']}"
-        self.debug_panel.add_log_message(msg, entry.get("level", "INFO"))
+        level = entry.get("level", "INFO")
+        self.log_received.emit(msg, level)
+
+    def _on_log_received(self, msg: str, level: str) -> None:
+        self.debug_panel.add_log_message(msg, level)
 
     def _on_worker_error(self, err_msg: str) -> None:
         self.logger.log_event("PIPELINE_ERROR", err_msg, level="ERROR")

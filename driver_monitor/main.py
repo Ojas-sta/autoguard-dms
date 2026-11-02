@@ -155,7 +155,9 @@ def main() -> None:
         from PyQt6.QtWidgets import QApplication
         from driver_monitor.dashboard.main_window import MainWindow
 
-        app = QApplication(sys.argv)
+        # Pass sanitized argv to prevent Qt from misinterpreting our custom --platform flag as Qt's -platform QPA plugin
+        qt_args = [sys.argv[0]]
+        app = QApplication(qt_args)
         app.setApplicationName("AutoGuard Driver Monitoring System")
         app.setStyle("Fusion")
 
