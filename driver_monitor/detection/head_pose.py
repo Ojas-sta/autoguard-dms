@@ -1,8 +1,8 @@
 """
-Head Pose Estimation and Nodding Detection for Driver Monitoring System.
-Uses 3D facial model and OpenCV solvePnP to extract Pitch, Yaw, and Roll angles.
-Detects sustained head-down postures, repeated nodding motions (microsleep indicators),
-sustained abnormal orientations, and generates 3D pose projection axes.
+Head Pose Estimation and Kinematics Analysis for Driver Monitoring System.
+Uses 3D facial anthropometric model and OpenCV solvePnP to extract Pitch, Yaw, and Roll angles.
+Corrects coordinate conventions to eliminate angle wrapping and false emergency triggers.
+Includes multi-observation neutral calibration and microsleep nodding detection.
 """
 
 from collections import deque
@@ -20,19 +20,21 @@ logger = logging.getLogger(__name__)
 
 
 class HeadPoseEstimator:
-    """Estimates 3D head pose and monitors abnormal head postures."""
+    """Estimates 3D head pose with corrected OpenCV camera coordinate conventions."""
 
-    # 3D generic anthropometric facial points (in arbitrary coordinate scale, mm)
+    # Canonical 3D anthropometric face model aligned with OpenCV camera coordinate frame:
+    # +X points right (image right / subject's left)
+    # +Y points down (towards chin)
+    # +Z points out of the face towards camera (closer to camera)
     MODEL_POINTS_3D = np.array([
         (0.0, 0.0, 0.0),             # Nose tip (index 1)
-        (0.0, -330.0, -65.0),        # Chin (index 152)
-        (-225.0, 170.0, -135.0),     # Left eye outer corner (index 33)
-        (225.0, 170.0, -135.0),      # Right eye outer corner (index 263)
-        (-150.0, -150.0, -125.0),    # Left mouth corner (index 61)
-        (150.0, -150.0, -125.0),     # Right mouth corner (index 291)
+        (0.0, 330.0, -65.0),         # Chin (index 152) -> +Y, -Z
+        (-225.0, -170.0, -135.0),    # Left in image (index 33) -> -X, -Y, -Z
+        (225.0, -170.0, -135.0),     # Right in image (index 263) -> +X, -Y, -Z
+        (-150.0, 150.0, -125.0),     # Left mouth (index 61) -> -X, +Y, -Z
+        (150.0, 150.0, -125.0)       # Right mouth (index 291) -> +X, +Y, -Z
     ], dtype=np.float64)
 
-    # Corresponding MediaPipe landmark indices
     LANDMARK_INDICES = [1, 152, 33, 263, 61, 291]
 
     def __init__(self, config: Optional[HeadPoseConfig] = None):
@@ -45,22 +47,56 @@ class HeadPoseEstimator:
         self._pitch_history: Deque[Tuple[float, float]] = deque(maxlen=60)  # (timestamp, pitch)
         self._nod_timestamps: Deque[float] = deque()
         self._is_nod_in_progress = False
-        self._nod_baseline_pitch = 0.0
 
-        # Calibration offset
+        # Neutral calibration baseline offsets
         self._pitch_offset = 0.0
         self._yaw_offset = 0.0
         self._roll_offset = 0.0
+        self._calibration_confidence = 1.0
+
+        # Multi-observation calibration buffer
+        self._is_calibrating = False
+        self._calibration_samples: List[Tuple[float, float, float]] = []
+        self._calibration_target_samples = 25
 
     def update_config(self, config: HeadPoseConfig) -> None:
         self._config = config
 
+    def start_multi_observation_calibration(self, num_samples: int = 25, num_observations: Optional[int] = None) -> None:
+        """Initiates a multi-frame neutral head pose calibration."""
+        if num_observations is not None:
+            num_samples = num_observations
+        self._is_calibrating = True
+        self._calibration_target_samples = num_samples
+        self._calibration_samples.clear()
+        logger.info("Started multi-observation head pose calibration (target: %d frames)", num_samples)
+
+    def is_calibrating(self) -> bool:
+        return self._is_calibrating
+
+    def get_calibration_progress(self) -> float:
+        if not self._is_calibrating or self._calibration_target_samples == 0:
+            return 1.0
+        return len(self._calibration_samples) / float(self._calibration_target_samples)
+
     def calibrate(self, pitch: float, yaw: float, roll: float) -> None:
-        """Zeros the current head pose as the neutral forward-looking position."""
+        """Direct instantaneous single-point calibration fallback."""
         self._pitch_offset = pitch
         self._yaw_offset = yaw
         self._roll_offset = roll
-        logger.info("Head pose calibrated: pitch_offset=%.1f, yaw_offset=%.1f, roll_offset=%.1f", pitch, yaw, roll)
+        self._calibration_confidence = 0.85
+        logger.info("Direct head pose calibrated: pitch=%.1f, yaw=%.1f, roll=%.1f", pitch, yaw, roll)
+
+    def set_calibration_offsets(self, pitch_offset: float, yaw_offset: float, roll_offset: float, confidence: float = 1.0) -> None:
+        """Sets calibrated neutral offsets."""
+        self._pitch_offset = pitch_offset
+        self._yaw_offset = yaw_offset
+        self._roll_offset = roll_offset
+        self._calibration_confidence = confidence
+
+    def get_calibration_offsets(self) -> Tuple[float, float, float, float]:
+        """Returns (pitch_offset, yaw_offset, roll_offset, confidence)."""
+        return (self._pitch_offset, self._yaw_offset, self._roll_offset, self._calibration_confidence)
 
     def estimate(
         self,
@@ -74,7 +110,7 @@ class HeadPoseEstimator:
 
         metrics = HeadPoseMetrics()
 
-        if not landmarks_2d or len(landmarks_2d) < 468:
+        if not landmarks_2d or len(landmarks_2d) < 468 or frame_shape[0] == 0 or frame_shape[1] == 0:
             self._head_down_start = None
             self._head_turned_start = None
             self._head_tilted_start = None
@@ -119,30 +155,58 @@ class HeadPoseEstimator:
         angles, _, _, _, _, _ = cv2.RQDecomp3x3(rmat)
 
         # OpenCV RQDecomp angles:
-        # pitch (up/down): angles[0]
-        # yaw (left/right): angles[1]
-        # roll (tilt): angles[2]
+        # pitch (up/down): angles[0] (+ = down, - = up)
+        # yaw (left/right): angles[1] (+ = right, - = left)
+        # roll (tilt): angles[2] (+ = tilt right, - = tilt left)
         raw_pitch = float(angles[0])
         raw_yaw = float(angles[1])
         raw_roll = float(angles[2])
 
-        # Normalize angles to neutral range [-180, 180]
-        # On standard face model, pitch ~ 0 when level, positive = up, negative = down
+        # Multi-observation calibration sampling
+        if self._is_calibrating:
+            self._calibration_samples.append((raw_pitch, raw_yaw, raw_roll))
+            if len(self._calibration_samples) >= self._calibration_target_samples:
+                # Compute stable mean and standard deviation
+                pitches = [s[0] for s in self._calibration_samples]
+                yaws = [s[1] for s in self._calibration_samples]
+                rolls = [s[2] for s in self._calibration_samples]
+
+                mean_p, std_p = float(np.mean(pitches)), float(np.std(pitches))
+                mean_y, std_y = float(np.mean(yaws)), float(np.std(yaws))
+                mean_r, std_r = float(np.mean(rolls)), float(np.std(rolls))
+
+                self._pitch_offset = mean_p
+                self._yaw_offset = mean_y
+                self._roll_offset = mean_r
+
+                # Confidence based on stability (low std = high confidence)
+                avg_std = (std_p + std_y + std_r) / 3.0
+                confidence = max(0.5, min(1.0, 1.0 - (avg_std / 10.0)))
+                self._calibration_confidence = round(confidence, 2)
+                self._is_calibrating = False
+                logger.info(
+                    "Multi-observation calibration complete: P_offset=%.1f (std=%.2f), Y_offset=%.1f (std=%.2f), R_offset=%.1f (std=%.2f), Conf=%.0f%%",
+                    mean_p, std_p, mean_y, std_y, mean_r, std_r, self._calibration_confidence * 100
+                )
+
+        # Normalize relative to calibrated neutral posture
         norm_pitch = (raw_pitch - self._pitch_offset)
         norm_yaw = (raw_yaw - self._yaw_offset)
         norm_roll = (raw_roll - self._roll_offset)
 
-        # Keep in [-180, 180]
-        norm_pitch = (norm_pitch + 180) % 360 - 180
-        norm_yaw = (norm_yaw + 180) % 360 - 180
-        norm_roll = (norm_roll + 180) % 360 - 180
+        # Wrap angles cleanly to [-180, 180]
+        norm_pitch = (norm_pitch + 180.0) % 360.0 - 180.0
+        norm_yaw = (norm_yaw + 180.0) % 360.0 - 180.0
+        norm_roll = (norm_roll + 180.0) % 360.0 - 180.0
 
         metrics.pitch = round(norm_pitch, 1)
         metrics.yaw = round(norm_yaw, 1)
         metrics.roll = round(norm_roll, 1)
+        metrics.calibration_confidence = self._calibration_confidence
 
-        # Check Head-Down
-        if metrics.pitch < self._config.pitch_down_threshold:
+        # Check Head-Down posture (+pitch > threshold)
+        pitch_thresh = abs(self._config.pitch_down_threshold)
+        if metrics.pitch > pitch_thresh:
             metrics.is_head_down = True
             if self._head_down_start is None:
                 self._head_down_start = timestamp
@@ -152,7 +216,7 @@ class HeadPoseEstimator:
             self._head_down_start = None
             metrics.head_down_duration_sec = 0.0
 
-        # Check Head-Turned
+        # Check Head-Turned posture (|yaw| > threshold)
         if abs(metrics.yaw) > self._config.yaw_turned_threshold:
             metrics.is_head_turned = True
             if self._head_turned_start is None:
@@ -163,7 +227,7 @@ class HeadPoseEstimator:
             self._head_turned_start = None
             metrics.head_turned_duration_sec = 0.0
 
-        # Check Head-Tilted
+        # Check Head-Tilted posture (|roll| > threshold)
         if abs(metrics.roll) > self._config.roll_tilted_threshold:
             metrics.is_head_tilted = True
             if self._head_tilted_start is None:
@@ -174,7 +238,7 @@ class HeadPoseEstimator:
             self._head_tilted_start = None
             metrics.head_tilted_duration_sec = 0.0
 
-        # Nodding detection logic
+        # Update Nodding analysis
         self._update_nodding(metrics.pitch, timestamp, metrics)
 
         # 3D coordinate axes projection for visualization
@@ -183,24 +247,22 @@ class HeadPoseEstimator:
         return metrics
 
     def _update_nodding(self, current_pitch: float, timestamp: float, metrics: HeadPoseMetrics) -> None:
-        """Detects micro-sleep nodding cycles (rapid downward pitch drop followed by rebound)."""
+        """Detects micro-sleep nodding cycles (downward pitch drop followed by upward rebound)."""
         self._pitch_history.append((timestamp, current_pitch))
 
-        # Check for downward dip then upward return
         if len(self._pitch_history) >= 4:
             past_pitches = [p for t, p in self._pitch_history if timestamp - t <= 2.0]
             if past_pitches:
                 min_past = min(past_pitches)
                 max_past = max(past_pitches)
                 diff = max_past - min_past
-                # If there was a dip > nod_pitch_dip and currently recovering
+                # If there was a downward dip (> nod_pitch_dip) and now rebounding
                 if diff >= self._config.nod_pitch_dip:
-                    if not self._is_nod_in_progress and current_pitch > min_past + 6.0:
-                        # Nod rebound completed
+                    if not self._is_nod_in_progress and current_pitch < max_past - 6.0:
                         self._is_nod_in_progress = True
                         self._nod_timestamps.append(timestamp)
                         metrics.recent_nod_detected = True
-                    elif current_pitch >= max_past - 3.0:
+                    elif current_pitch <= min_past + 3.0:
                         self._is_nod_in_progress = False
 
         # Clean old nods
@@ -221,9 +283,9 @@ class HeadPoseEstimator:
         axis_length = 150.0
         axis_points_3d = np.array([
             (0.0, 0.0, 0.0),                    # Origin (Nose tip)
-            (axis_length, 0.0, 0.0),            # X-axis (Pitch/Roll right)
-            (0.0, -axis_length, 0.0),           # Y-axis (Up)
-            (0.0, 0.0, axis_length),            # Z-axis (Forward pointing out of face)
+            (axis_length, 0.0, 0.0),            # X-axis (Right)
+            (0.0, axis_length, 0.0),            # Y-axis (Down)
+            (0.0, 0.0, axis_length),            # Z-axis (Forward)
         ], dtype=np.float64)
 
         img_pts, _ = cv2.projectPoints(axis_points_3d, rvec, tvec, camera_matrix, dist_coeffs)
@@ -237,3 +299,5 @@ class HeadPoseEstimator:
         self._pitch_history.clear()
         self._nod_timestamps.clear()
         self._is_nod_in_progress = False
+        self._is_calibrating = False
+        self._calibration_samples.clear()

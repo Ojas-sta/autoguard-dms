@@ -1,6 +1,6 @@
 """
 Alert Decision Manager for Driver Monitoring System.
-Arbitrates multi-level alert states from drowsiness, abnormal kinematics, and emergency inputs.
+Arbitrates multi-level alert states from drowsiness, abnormal kinematics, distraction, and emergency inputs.
 Controls buzzer patterns, LED outputs, and alert acknowledgment.
 """
 
@@ -10,32 +10,41 @@ from typing import Optional
 
 from driver_monitor.core.result_models import (
     AlertLevel, DrowsinessResult, DrowsinessState, AbnormalMovementResult,
-    AbnormalMovementState, SystemAlert
+    AbnormalMovementState, DistractionMetrics, DistractionState, SystemAlert
 )
 
 logger = logging.getLogger(__name__)
 
 
 class AlertManager:
-    """Consolidates system warnings and commands alert audio and visual actuators."""
+    """Consolidates system warnings across drowsiness, kinematics, and visual distraction."""
 
     def __init__(self):
         self._last_alert = SystemAlert()
         self._sound_enabled = True
-        self._last_buzzer_command_time = 0.0
+        self._distraction_alerts_enabled = True
 
     def set_sound_enabled(self, enabled: bool) -> None:
         self._sound_enabled = enabled
         logger.info("Alert sound enabled set to %s", enabled)
 
+    def set_distraction_alerts_enabled(self, enabled: bool) -> None:
+        self._distraction_alerts_enabled = enabled
+        logger.info("Distraction alerts enabled set to %s", enabled)
+
     @property
     def sound_enabled(self) -> bool:
         return self._sound_enabled
+
+    @property
+    def distraction_alerts_enabled(self) -> bool:
+        return self._distraction_alerts_enabled
 
     def update(
         self,
         drowsiness: DrowsinessResult,
         abnormal: AbnormalMovementResult,
+        distraction: Optional[DistractionMetrics] = None,
         is_emergency: bool = False,
         timestamp: Optional[float] = None
     ) -> SystemAlert:
@@ -63,13 +72,26 @@ class AlertManager:
             self._last_alert = alert
             return alert
 
+        # Distraction active state
+        dist_crit = False
+        dist_warn = False
+        dist_attn = False
+        if distraction is not None and self._distraction_alerts_enabled:
+            dist_crit = (distraction.state == DistractionState.CRITICAL_DEMO_ALERT)
+            dist_warn = (distraction.state in (DistractionState.VISUAL_DISTRACTION, DistractionState.DOWNWARD_DISTRACTION))
+            dist_attn = (distraction.state == DistractionState.ATTENTION_WARNING)
+
         # ---------------------------------------------------------
-        # Priority 2: Critical Drowsiness or Critical Emergency Demo
+        # Priority 2: Critical Drowsiness, Critical Distraction, Emergency Demo
         # ---------------------------------------------------------
         if (drowsiness.state == DrowsinessState.CRITICAL_DEMO_ALERT or
-            abnormal.state == AbnormalMovementState.POSSIBLE_DRIVER_EMERGENCY_DEMO):
+            abnormal.state == AbnormalMovementState.POSSIBLE_DRIVER_EMERGENCY_DEMO or
+            dist_crit):
             alert.level = AlertLevel.CRITICAL
-            if drowsiness.state == DrowsinessState.CRITICAL_DEMO_ALERT:
+            if dist_crit and distraction is not None:
+                alert.title = distraction.alert_title
+                alert.description = distraction.details
+            elif drowsiness.state == DrowsinessState.CRITICAL_DEMO_ALERT:
                 alert.title = "CRITICAL DROWSINESS ALERT"
                 alert.description = "; ".join(drowsiness.reasons) or "Immediate driver intervention required"
             else:
@@ -87,12 +109,16 @@ class AlertManager:
             return alert
 
         # ---------------------------------------------------------
-        # Priority 3: Drowsiness Warning or Driver Attention Lost
+        # Priority 3: Drowsiness Warning, Visual Distraction, Attention Lost
         # ---------------------------------------------------------
         if (drowsiness.state == DrowsinessState.DROWSINESS_WARNING or
-            abnormal.state == AbnormalMovementState.DRIVER_ATTENTION_LOST):
+            abnormal.state == AbnormalMovementState.DRIVER_ATTENTION_LOST or
+            dist_warn):
             alert.level = AlertLevel.WARNING
-            if drowsiness.state == DrowsinessState.DROWSINESS_WARNING:
+            if dist_warn and distraction is not None:
+                alert.title = distraction.alert_title
+                alert.description = distraction.details
+            elif drowsiness.state == DrowsinessState.DROWSINESS_WARNING:
                 alert.title = "DROWSINESS WARNING"
                 alert.description = "; ".join(drowsiness.reasons) or "Driver fatigue detected"
             else:
@@ -110,12 +136,16 @@ class AlertManager:
             return alert
 
         # ---------------------------------------------------------
-        # Priority 4: Attention or Abnormal Head Posture / Movement
+        # Priority 4: Attention, Brief Off-Road Glance, Abnormal Posture
         # ---------------------------------------------------------
         if (drowsiness.state == DrowsinessState.ATTENTION or
-            abnormal.state in (AbnormalMovementState.ABNORMAL_HEAD_POSTURE, AbnormalMovementState.UNUSUAL_HEAD_MOVEMENT)):
+            abnormal.state in (AbnormalMovementState.ABNORMAL_HEAD_POSTURE, AbnormalMovementState.UNUSUAL_HEAD_MOVEMENT) or
+            dist_attn):
             alert.level = AlertLevel.ATTENTION
-            if drowsiness.state == DrowsinessState.ATTENTION:
+            if dist_attn and distraction is not None:
+                alert.title = distraction.alert_title
+                alert.description = distraction.details
+            elif drowsiness.state == DrowsinessState.ATTENTION:
                 alert.title = "DRIVER ATTENTION WARNING"
                 alert.description = "; ".join(drowsiness.reasons) or "Maintain attention on road"
             else:
@@ -137,7 +167,7 @@ class AlertManager:
         # ---------------------------------------------------------
         alert.level = AlertLevel.NORMAL
         alert.title = "NORMAL"
-        alert.description = "Driver attentive and alert"
+        alert.description = "Driver attentive and looking at road"
         alert.color_code = "#10b981"  # Green
         alert.buzzer_active = False
         alert.buzzer_pattern = "OFF"

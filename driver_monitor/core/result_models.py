@@ -30,6 +30,26 @@ class AbnormalMovementState(Enum):
     POSSIBLE_DRIVER_EMERGENCY_DEMO = "POSSIBLE_DRIVER_EMERGENCY_DEMO"
 
 
+class GazeDirection(Enum):
+    ROAD = "ROAD"
+    LEFT_MIRROR = "LEFT_MIRROR"
+    RIGHT_MIRROR = "RIGHT_MIRROR"
+    DOWN = "DOWN"
+    UP = "UP"
+    AWAY = "AWAY"
+    UNKNOWN = "UNKNOWN"
+
+
+class DistractionState(Enum):
+    NORMAL = "NORMAL"
+    BRIEF_GLANCE = "BRIEF_GLANCE"
+    ATTENTION_WARNING = "ATTENTION_WARNING"
+    VISUAL_DISTRACTION = "VISUAL_DISTRACTION"
+    DOWNWARD_DISTRACTION = "DOWNWARD_DISTRACTION"
+    CRITICAL_DEMO_ALERT = "CRITICAL_DEMO_ALERT"
+    UNKNOWN = "UNKNOWN"
+
+
 class AlertLevel(Enum):
     NORMAL = "NORMAL"
     ATTENTION = "ATTENTION"
@@ -54,8 +74,53 @@ class EyeMetrics:
 
 
 @dataclass
+class IrisMetrics:
+    left_iris_center: Tuple[float, float] = (0.0, 0.0)
+    right_iris_center: Tuple[float, float] = (0.0, 0.0)
+    left_iris_ratio_x: float = 0.5  # 0.0 (outer) to 1.0 (inner)
+    left_iris_ratio_y: float = 0.5  # 0.0 (top) to 1.0 (bottom)
+    right_iris_ratio_x: float = 0.5
+    right_iris_ratio_y: float = 0.5
+    avg_iris_ratio_x: float = 0.5
+    avg_iris_ratio_y: float = 0.5
+    left_iris_points: List[Tuple[float, float]] = field(default_factory=list)
+    right_iris_points: List[Tuple[float, float]] = field(default_factory=list)
+    is_valid: bool = False
+
+
+@dataclass
+class GazeMetrics:
+    direction: GazeDirection = GazeDirection.UNKNOWN
+    confidence: float = 0.0
+    horizontal_gaze: float = 0.0  # -1.0 (far left) to +1.0 (far right)
+    vertical_gaze: float = 0.0    # -1.0 (up) to +1.0 (down)
+    dwell_time_sec: float = 0.0
+    is_looking_at_road: bool = True
+    gaze_origin_2d: Tuple[int, int] = (0, 0)
+    gaze_target_2d: Tuple[int, int] = (0, 0)
+
+
+@dataclass
+class DistractionMetrics:
+    state: DistractionState = DistractionState.NORMAL
+    off_road_glance_duration_sec: float = 0.0
+    longest_off_road_glance_sec: float = 0.0
+    total_distraction_duration_sec: float = 0.0
+    distraction_event_count: int = 0
+    downward_glance_count: int = 0
+    left_glance_count: int = 0
+    right_glance_count: int = 0
+    road_gaze_percent: float = 100.0
+    off_road_gaze_percent: float = 0.0
+    events_per_minute: float = 0.0
+    is_distracted: bool = False
+    alert_title: str = ""
+    details: str = ""
+
+
+@dataclass
 class HeadPoseMetrics:
-    pitch: float = 0.0  # degrees (+ = up, - = down)
+    pitch: float = 0.0  # degrees (+ = down, - = up)
     yaw: float = 0.0    # degrees (+ = right, - = left)
     roll: float = 0.0   # degrees (+ = tilt right, - = tilt left)
     is_head_down: bool = False
@@ -69,6 +134,7 @@ class HeadPoseMetrics:
     rotation_vector: Optional[np.ndarray] = None
     translation_vector: Optional[np.ndarray] = None
     projected_axes: Optional[List[Tuple[int, int]]] = None
+    calibration_confidence: float = 1.0
 
 
 @dataclass
@@ -128,12 +194,15 @@ class SystemAlert:
 @dataclass
 class PerformanceMetrics:
     fps: float = 0.0
+    inference_fps: float = 0.0
     processing_latency_ms: float = 0.0
     cpu_percent: float = 0.0
     memory_percent: float = 0.0
     resolution: Tuple[int, int] = (0, 0)
     source_type: str = "webcam"
     source_name: str = "Default"
+    power_profile: str = "BALANCED"
+    dropped_frames: int = 0
 
 
 @dataclass
@@ -142,6 +211,9 @@ class FrameAnalysisResult:
     frame_index: int = 0
     face: FaceDetectionResult = field(default_factory=FaceDetectionResult)
     eyes: EyeMetrics = field(default_factory=EyeMetrics)
+    iris: IrisMetrics = field(default_factory=IrisMetrics)
+    gaze: GazeMetrics = field(default_factory=GazeMetrics)
+    distraction: DistractionMetrics = field(default_factory=DistractionMetrics)
     head_pose: HeadPoseMetrics = field(default_factory=HeadPoseMetrics)
     mouth: MouthMetrics = field(default_factory=MouthMetrics)
     drowsiness: DrowsinessResult = field(default_factory=DrowsinessResult)

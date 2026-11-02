@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar, QGroupBox, QGridLayout
 )
 
-from driver_monitor.core.result_models import EyeStatus, FrameAnalysisResult
+from driver_monitor.core.result_models import EyeStatus, FrameAnalysisResult, GazeDirection, DistractionState
 
 
 class MonitoringPanel(QWidget):
@@ -197,7 +197,72 @@ class MonitoringPanel(QWidget):
 
         layout.addWidget(grp_head)
 
-        # 5. High-Level Decision States Group
+        # 5. Road Gaze & Iris Tracking Group
+        grp_gaze = QGroupBox("Road Gaze & Iris Tracking")
+        lay_gaze = QGridLayout(grp_gaze)
+        lay_gaze.setContentsMargins(10, 10, 10, 10)
+        lay_gaze.setSpacing(6)
+
+        lay_gaze.addWidget(QLabel("Gaze Direction:"), 0, 0)
+        self.lbl_gaze_dir = QLabel("ROAD")
+        self.lbl_gaze_dir.setStyleSheet("color: #10b981; font-weight: bold; font-size: 12px;")
+        lay_gaze.addWidget(self.lbl_gaze_dir, 0, 1)
+
+        lay_gaze.addWidget(QLabel("Confidence:"), 0, 2)
+        self.lbl_gaze_conf = QLabel("95%")
+        self.lbl_gaze_conf.setProperty("class", "ValueLabel")
+        lay_gaze.addWidget(self.lbl_gaze_conf, 0, 3)
+
+        lay_gaze.addWidget(QLabel("Zone Dwell:"), 1, 0)
+        self.lbl_gaze_dwell = QLabel("0.0s")
+        self.lbl_gaze_dwell.setProperty("class", "ValueLabel")
+        lay_gaze.addWidget(self.lbl_gaze_dwell, 1, 1)
+
+        lay_gaze.addWidget(QLabel("Iris Center:"), 1, 2)
+        self.lbl_iris_center = QLabel("(0.50, 0.50)")
+        self.lbl_iris_center.setProperty("class", "ValueLabel")
+        lay_gaze.addWidget(self.lbl_iris_center, 1, 3)
+
+        layout.addWidget(grp_gaze)
+
+        # 6. Driver Distraction & Attention Analytics Group
+        grp_dist = QGroupBox("Distraction & Attention Analytics")
+        lay_dist = QGridLayout(grp_dist)
+        lay_dist.setContentsMargins(10, 10, 10, 10)
+        lay_dist.setSpacing(6)
+
+        lay_dist.addWidget(QLabel("Distraction State:"), 0, 0)
+        self.lbl_distraction_state = QLabel("NORMAL")
+        self.lbl_distraction_state.setStyleSheet("color: #10b981; font-weight: bold;")
+        lay_dist.addWidget(self.lbl_distraction_state, 0, 1)
+
+        lay_dist.addWidget(QLabel("Off-Road Glance:"), 0, 2)
+        self.lbl_offroad_glance = QLabel("0.0s")
+        self.lbl_offroad_glance.setProperty("class", "ValueLabel")
+        lay_dist.addWidget(self.lbl_offroad_glance, 0, 3)
+
+        lay_dist.addWidget(QLabel("Road Attention:"), 1, 0)
+        self.lbl_road_attn_pct = QLabel("100%")
+        self.lbl_road_attn_pct.setProperty("class", "ValueLabel")
+        lay_dist.addWidget(self.lbl_road_attn_pct, 1, 1)
+
+        self.bar_road_attn = QProgressBar()
+        self.bar_road_attn.setRange(0, 100)
+        self.bar_road_attn.setValue(100)
+        lay_dist.addWidget(self.bar_road_attn, 1, 2, 1, 2)
+
+        lay_dist.addWidget(QLabel("Glance Counters:"), 2, 0)
+        self.lbl_glance_counts = QLabel("Down:0 | L:0 | R:0")
+        self.lbl_glance_counts.setStyleSheet("color: #94a3b8; font-family: monospace; font-size: 10px;")
+        lay_dist.addWidget(self.lbl_glance_counts, 2, 1, 1, 2)
+
+        self.lbl_dist_events = QLabel("Events: 0")
+        self.lbl_dist_events.setProperty("class", "ValueLabel")
+        lay_dist.addWidget(self.lbl_dist_events, 2, 3)
+
+        layout.addWidget(grp_dist)
+
+        # 7. High-Level Decision States Group
         grp_state = QGroupBox("System State Machine")
         lay_state = QGridLayout(grp_state)
         lay_state.setContentsMargins(10, 10, 10, 10)
@@ -282,7 +347,47 @@ class MonitoringPanel(QWidget):
 
         self.lbl_nod_count.setText(str(res.head_pose.head_nod_count))
 
-        # 5. States
+        # 5. Road Gaze & Iris
+        gaze_col = "#10b981" if res.gaze.is_looking_at_road else "#00d2ff"
+        if res.gaze.direction in (GazeDirection.DOWN, GazeDirection.AWAY):
+            gaze_col = "#f97316"
+        self.lbl_gaze_dir.setText(res.gaze.direction.value)
+        self.lbl_gaze_dir.setStyleSheet(f"color: {gaze_col}; font-weight: bold; font-size: 12px;")
+        self.lbl_gaze_conf.setText(f"{res.gaze.confidence:.0%}")
+        self.lbl_gaze_dwell.setText(f"{res.gaze.dwell_time_sec:.1f}s")
+        if res.iris.is_valid:
+            self.lbl_iris_center.setText(f"({res.iris.avg_iris_ratio_x:.2f}, {res.iris.avg_iris_ratio_y:.2f})")
+        else:
+            self.lbl_iris_center.setText("N/A")
+
+        # 6. Distraction & Analytics
+        dist_colors = {
+            DistractionState.NORMAL: "#10b981",
+            DistractionState.BRIEF_GLANCE: "#00d2ff",
+            DistractionState.ATTENTION_WARNING: "#f59e0b",
+            DistractionState.VISUAL_DISTRACTION: "#f97316",
+            DistractionState.DOWNWARD_DISTRACTION: "#f97316",
+            DistractionState.CRITICAL_DEMO_ALERT: "#ef4444",
+            DistractionState.UNKNOWN: "#64748b"
+        }
+        self.lbl_distraction_state.setText(res.distraction.state.value)
+        self.lbl_distraction_state.setStyleSheet(f"color: {dist_colors.get(res.distraction.state, '#ffffff')}; font-weight: bold;")
+        self.lbl_offroad_glance.setText(f"{res.distraction.off_road_glance_duration_sec:.1f}s")
+        self.lbl_road_attn_pct.setText(f"{res.distraction.road_gaze_percent:.0f}%")
+        self.bar_road_attn.setValue(int(res.distraction.road_gaze_percent))
+        if res.distraction.road_gaze_percent < 60.0:
+            self.bar_road_attn.setStyleSheet("QProgressBar::chunk { background-color: #ef4444; }")
+        elif res.distraction.road_gaze_percent < 80.0:
+            self.bar_road_attn.setStyleSheet("QProgressBar::chunk { background-color: #f59e0b; }")
+        else:
+            self.bar_road_attn.setStyleSheet("QProgressBar::chunk { background-color: #10b981; }")
+
+        self.lbl_glance_counts.setText(
+            f"Down:{res.distraction.downward_glance_count} | L:{res.distraction.left_glance_count} | R:{res.distraction.right_glance_count}"
+        )
+        self.lbl_dist_events.setText(f"Events: {res.distraction.distraction_event_count}")
+
+        # 7. States
         drow_colors = {
             "NORMAL": "#10b981",
             "ATTENTION": "#f59e0b",

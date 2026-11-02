@@ -199,16 +199,40 @@ class MainWindow(QMainWindow):
         header_layout.addStretch()
 
         # Sound toggle button
-        self.btn_sound_toggle = QPushButton("🔊 AUDIO ALERTS: ON")
+        self.btn_sound_toggle = QPushButton("🔊 AUDIO: ON")
         self.btn_sound_toggle.setCheckable(True)
         self.btn_sound_toggle.setChecked(True)
         self.btn_sound_toggle.clicked.connect(self._toggle_sound)
         header_layout.addWidget(self.btn_sound_toggle)
 
-        # Calibrate Neutral Head Pose button
-        self.btn_calibrate = QPushButton("🎯 ZERO HEAD POSE")
-        self.btn_calibrate.clicked.connect(self._calibrate_head_pose)
-        header_layout.addWidget(self.btn_calibrate)
+        # Distraction alerts toggle
+        self.btn_distraction_toggle = QPushButton("⚠️ DISTRACTION: ON")
+        self.btn_distraction_toggle.setCheckable(True)
+        self.btn_distraction_toggle.setChecked(True)
+        self.btn_distraction_toggle.clicked.connect(self._toggle_distraction_alerts)
+        header_layout.addWidget(self.btn_distraction_toggle)
+
+        # Overlay visual annotations toggle
+        self.btn_overlays_toggle = QPushButton("👁️ OVERLAYS: ON")
+        self.btn_overlays_toggle.setCheckable(True)
+        self.btn_overlays_toggle.setChecked(True)
+        self.btn_overlays_toggle.clicked.connect(self._toggle_overlays)
+        header_layout.addWidget(self.btn_overlays_toggle)
+
+        # Calibrate Neutral Head Pose button (multi-observation)
+        self.btn_calibrate_head = QPushButton("🎯 ZERO HEAD POSE")
+        self.btn_calibrate_head.clicked.connect(self._calibrate_head_pose)
+        header_layout.addWidget(self.btn_calibrate_head)
+
+        # Guided Gaze Calibration button
+        self.btn_calibrate_gaze = QPushButton("👀 CALIBRATE GAZE")
+        self.btn_calibrate_gaze.clicked.connect(self._calibrate_gaze)
+        header_layout.addWidget(self.btn_calibrate_gaze)
+
+        # Export Gaze CSV button
+        self.btn_export_csv = QPushButton("💾 EXPORT CSV")
+        self.btn_export_csv.clicked.connect(self._export_gaze_csv)
+        header_layout.addWidget(self.btn_export_csv)
 
         # Debug charts toggle
         self.btn_debug_toggle = QPushButton("📈 CHARTS: ON")
@@ -312,6 +336,16 @@ class MainWindow(QMainWindow):
         ctrl_layout.addStretch()
 
         # Simulation Injection Buttons
+        self.btn_sim_road = QPushButton("Simulate Road Gaze")
+        self.btn_sim_road.setCheckable(True)
+        self.btn_sim_road.clicked.connect(self._toggle_sim_road)
+        ctrl_layout.addWidget(self.btn_sim_road)
+
+        self.btn_sim_distract = QPushButton("Simulate Distraction")
+        self.btn_sim_distract.setCheckable(True)
+        self.btn_sim_distract.clicked.connect(self._toggle_sim_distract)
+        ctrl_layout.addWidget(self.btn_sim_distract)
+
         self.btn_sim_drowsy = QPushButton("Simulate Drowsy")
         self.btn_sim_drowsy.setCheckable(True)
         self.btn_sim_drowsy.clicked.connect(self._toggle_sim_drowsy)
@@ -321,6 +355,10 @@ class MainWindow(QMainWindow):
         self.btn_sim_abnormal.setCheckable(True)
         self.btn_sim_abnormal.clicked.connect(self._toggle_sim_abnormal)
         ctrl_layout.addWidget(self.btn_sim_abnormal)
+
+        self.btn_reset_stats = QPushButton("Reset Stats")
+        self.btn_reset_stats.clicked.connect(self._reset_gaze_stats)
+        ctrl_layout.addWidget(self.btn_reset_stats)
 
         main_layout.addWidget(controls)
 
@@ -457,25 +495,62 @@ class MainWindow(QMainWindow):
         is_on = self.btn_sound_toggle.isChecked()
         self.pipeline.alert_manager.set_sound_enabled(is_on)
         self.pipeline.buzzer.set_enabled(is_on)
-        self.btn_sound_toggle.setText("🔊 AUDIO ALERTS: ON" if is_on else "🔇 AUDIO ALERTS: OFF")
+        self.btn_sound_toggle.setText("🔊 AUDIO: ON" if is_on else "🔇 AUDIO: OFF")
+
+    def _toggle_distraction_alerts(self) -> None:
+        is_on = self.btn_distraction_toggle.isChecked()
+        self.pipeline.alert_manager.set_distraction_alerts_enabled(is_on)
+        self.pipeline.distraction_engine.set_alerts_enabled(is_on)
+        self.btn_distraction_toggle.setText("⚠️ DISTRACTION: ON" if is_on else "⚠️ DISTRACTION: OFF")
+        self.logger.log_event("CONFIG", f"Distraction alerts toggled: {is_on}")
+
+    def _toggle_overlays(self) -> None:
+        is_on = self.btn_overlays_toggle.isChecked()
+        self.pipeline.debug_overlays_enabled = is_on
+        self.btn_overlays_toggle.setText("👁️ OVERLAYS: ON" if is_on else "👁️ OVERLAYS: OFF")
 
     def _calibrate_head_pose(self) -> None:
-        # Zeroes current head orientation as 0,0,0 forward facing
-        curr_pitch = self.monitoring_panel.lbl_pitch.text().replace("°", "")
-        curr_yaw = self.monitoring_panel.lbl_yaw.text().replace("°", "")
-        curr_roll = self.monitoring_panel.lbl_roll.text().replace("°", "")
+        # Multi-observation stable calibration
+        self.pipeline.head_pose_estimator.start_multi_observation_calibration(num_observations=25)
+        self.logger.log_event("CALIBRATION", "Started 25-frame multi-observation head calibration. Keep head level facing forward.")
+
+    def _calibrate_gaze(self) -> None:
+        from driver_monitor.dashboard.gaze_calibration_dialog import GazeCalibrationDialog
+        dlg = GazeCalibrationDialog(self.pipeline.gaze_calibration_manager, self)
+        dlg.exec()
+
+    def _export_gaze_csv(self) -> None:
         try:
-            self.pipeline.head_pose_estimator.calibrate(
-                float(curr_pitch), float(curr_yaw), float(curr_roll)
-            )
-            self.logger.log_event("CALIBRATION", "Head pose calibrated to neutral forward position")
-        except Exception:
-            pass
+            path = self.pipeline.distraction_engine.export_csv()
+            self.logger.log_event("EXPORT", f"Gaze CSV exported to {path}")
+            QMessageBox.information(self, "Gaze Analytics Exported", f"Successfully exported gaze & distraction records to:\n{path}")
+        except Exception as e:
+            QMessageBox.warning(self, "Export Failed", f"Could not export gaze CSV:\n{e}")
+
+    def _reset_gaze_stats(self) -> None:
+        self.pipeline.distraction_engine.reset_statistics()
+        self.logger.log_event("RESET", "Gaze and distraction statistics reset to zero.")
 
     def _toggle_debug_panel(self) -> None:
         is_visible = self.btn_debug_toggle.isChecked()
         self.debug_panel.setVisible(is_visible)
         self.btn_debug_toggle.setText("📈 CHARTS: ON" if is_visible else "📈 CHARTS: OFF")
+
+    def _toggle_sim_road(self) -> None:
+        active = self.pipeline.emergency_sim.toggle_simulate_road_gaze()
+        self.btn_sim_road.setChecked(active)
+        self.btn_sim_road.setText("Road Locked (SIM)" if active else "Simulate Road Gaze")
+        if active:
+            self.btn_sim_distract.setChecked(False)
+            self.btn_sim_distract.setText("Simulate Distraction")
+
+    def _toggle_sim_distract(self) -> None:
+        active = self.pipeline.emergency_sim.toggle_simulate_distraction()
+        self.btn_sim_distract.setChecked(active)
+        self.btn_sim_distract.setText("Distracted (SIM)" if active else "Simulate Distraction")
+        if active:
+            self.btn_sim_road.setChecked(False)
+            self.btn_sim_road.setText("Simulate Road Gaze")
 
     def _toggle_sim_drowsy(self) -> None:
         active = self.pipeline.emergency_sim.toggle_simulate_drowsiness()
@@ -496,6 +571,10 @@ class MainWindow(QMainWindow):
         self.btn_sim_drowsy.setText("Simulate Drowsy")
         self.btn_sim_abnormal.setChecked(False)
         self.btn_sim_abnormal.setText("Simulate Abnormal Head")
+        self.btn_sim_road.setChecked(False)
+        self.btn_sim_road.setText("Simulate Road Gaze")
+        self.btn_sim_distract.setChecked(False)
+        self.btn_sim_distract.setText("Simulate Distraction")
 
     def _on_seek_requested(self, percent: float) -> None:
         if self.camera_mgr.is_video_source:

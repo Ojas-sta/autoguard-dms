@@ -164,12 +164,16 @@ class DebugPanel(QWidget):
         layout.setContentsMargins(6, 6, 6, 6)
         layout.setSpacing(6)
 
+        # Row 1: Biometric Indicators (EAR and MAR Trends)
+        row1 = QHBoxLayout()
+        row1.setSpacing(6)
+
         # 1. EAR Graph (Eye Aspect Ratio)
-        grp_ear = QGroupBox("Eye Aspect Ratio (EAR) Trend")
+        grp_ear = QGroupBox("Eye Aspect Ratio (EAR)")
         lay_ear = QVBoxLayout(grp_ear)
         lay_ear.setContentsMargins(6, 6, 6, 6)
         self.graph_ear = RealtimeGraphWidget(
-            title="EAR (Threshold: 0.22)",
+            title="EAR (Thresh: 0.22)",
             series_names=["EAR"],
             series_colors=["#00d2ff"],
             y_min=0.0,
@@ -177,14 +181,14 @@ class DebugPanel(QWidget):
             threshold=0.22
         )
         lay_ear.addWidget(self.graph_ear)
-        layout.addWidget(grp_ear)
+        row1.addWidget(grp_ear)
 
         # 2. MAR Graph (Mouth Aspect Ratio)
-        grp_mar = QGroupBox("Mouth Aspect Ratio (MAR) Trend")
+        grp_mar = QGroupBox("Mouth Aspect Ratio (MAR)")
         lay_mar = QVBoxLayout(grp_mar)
         lay_mar.setContentsMargins(6, 6, 6, 6)
         self.graph_mar = RealtimeGraphWidget(
-            title="MAR (Yawn Threshold: 0.55)",
+            title="MAR (Yawn Thresh: 0.55)",
             series_names=["MAR"],
             series_colors=["#f59e0b"],
             y_min=0.0,
@@ -192,7 +196,13 @@ class DebugPanel(QWidget):
             threshold=0.55
         )
         lay_mar.addWidget(self.graph_mar)
-        layout.addWidget(grp_mar)
+        row1.addWidget(grp_mar)
+
+        layout.addLayout(row1)
+
+        # Row 2: Kinematics & Road Attention Trends
+        row2 = QHBoxLayout()
+        row2.setSpacing(6)
 
         # 3. Head Pose (Pitch, Yaw, Roll)
         grp_pose = QGroupBox("Head Orientation Angles (°)")
@@ -207,9 +217,26 @@ class DebugPanel(QWidget):
             threshold=None
         )
         lay_pose.addWidget(self.graph_pose)
-        layout.addWidget(grp_pose)
+        row2.addWidget(grp_pose)
 
-        # 4. State Transitions & Event Log
+        # 4. Road Attention & Off-road Glance Trend
+        grp_attn = QGroupBox("Road Attention & Off-Road Glance")
+        lay_attn = QVBoxLayout(grp_attn)
+        lay_attn.setContentsMargins(6, 6, 6, 6)
+        self.graph_attn = RealtimeGraphWidget(
+            title="Road Attn % / Glance (s)",
+            series_names=["Road %", "Glance(s)"],
+            series_colors=["#10b981", "#ef4444"],
+            y_min=0.0,
+            y_max=100.0,
+            threshold=75.0
+        )
+        lay_attn.addWidget(self.graph_attn)
+        row2.addWidget(grp_attn)
+
+        layout.addLayout(row2)
+
+        # 5. State Transitions & Event Log
         grp_log = QGroupBox("Recent State Transitions")
         lay_log = QVBoxLayout(grp_log)
         lay_log.setContentsMargins(6, 6, 6, 6)
@@ -226,6 +253,12 @@ class DebugPanel(QWidget):
             res.head_pose.pitch,
             res.head_pose.yaw,
             res.head_pose.roll
+        ])
+        # Off-road glance duration scaled to match 0-100% chart (e.g., 5.0s = 100%)
+        glance_scaled = min(100.0, res.distraction.off_road_glance_duration_sec * 20.0)
+        self.graph_attn.add_point([
+            res.distraction.road_gaze_percent,
+            glance_scaled
         ])
 
     def add_log_message(self, message: str, level: str = "INFO") -> None:

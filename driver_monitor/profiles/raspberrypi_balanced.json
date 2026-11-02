@@ -1,0 +1,58 @@
+{
+  "platform": "raspberrypi",
+  "camera": {
+    "default_device_index": 0,
+    "resolution_width": 640,
+    "resolution_height": 480,
+    "target_fps": 30,
+    "backend": "PICAMERA2",
+    "warmup_frames": 10
+  },
+  "power": {
+    "profile_name": "BALANCED",
+    "target_capture_fps": 30,
+    "target_inference_fps": 15,
+    "face_detection_interval_frames": 2,
+    "adaptive_processing": true,
+    "benchmark_mode": false,
+    "benchmark_duration_sec": 30
+  },
+  "hardware": {
+    "platform_name": "raspberrypi",
+    "simulation_mode": false,
+    "buzzer_enabled": true,
+    "led_enabled": true,
+    "gpio_buzzer_pin": 18,
+    "gpio_led_green_pin": 23,
+    "gpio_led_yellow_pin": 24,
+    "gpio_led_orange_pin": 25,
+    "gpio_led_red_pin": 12,
+    "gpio_emergency_button_pin": 16
+  },
+  "eye": {
+    "ear_closed_threshold": 0.22,
+    "ear_open_threshold": 0.27,
+    "closure_attention_sec": 0.8,
+    "closure_warning_sec": 1.5,
+    "closure_critical_sec": 2.5
+  },
+  "head_pose": {
+    "pitch_down_threshold": 16.0,
+    "pitch_up_threshold": -20.0,
+    "yaw_turned_threshold": 26.0,
+    "roll_tilted_threshold": 22.0,
+    "head_down_warning_sec": 2.0
+  },
+  "gaze": {
+    "road_yaw_tolerance_deg": 14.0,
+    "road_pitch_tolerance_deg": 12.0,
+    "down_pitch_threshold_deg": 14.0
+  },
+  "distraction": {
+    "brief_glance_grace_sec": 1.0,
+    "attention_warning_sec": 1.5,
+    "prolonged_distraction_sec": 2.0,
+    "downward_distraction_sec": 1.8,
+    "critical_distraction_sec": 3.5
+  }
+}

@@ -67,3 +67,66 @@ class EmergencyButtonInterface(ABC):
     def is_pressed(self) -> bool:
         """Returns whether the emergency button is currently held/active."""
         pass
+
+
+class DummyBuzzer(BuzzerInterface):
+    """No-op buzzer actuator for headless testing and benchmarking."""
+
+    def __init__(self):
+        self._active = False
+        self._enabled = True
+
+    def start_alert(self, pattern: str) -> None:
+        self._active = True
+
+    def stop_alert(self) -> None:
+        self._active = False
+
+    def is_active(self) -> bool:
+        return self._active
+
+    def set_enabled(self, enabled: bool) -> None:
+        self._enabled = enabled
+
+
+class DummyLED(LEDInterface):
+    """No-op LED indicator cluster for headless testing and benchmarking."""
+
+    def __init__(self):
+        self._states = {"green": False, "yellow": False, "orange": False, "red": False}
+
+    def set_led(self, color: str, state: bool) -> None:
+        self._states[color] = state
+
+    def get_led(self, color: str) -> bool:
+        return self._states.get(color, False)
+
+    def set_all(self, green: bool, yellow: bool, orange: bool, red: bool) -> None:
+        self._states["green"] = green
+        self._states["yellow"] = yellow
+        self._states["orange"] = orange
+        self._states["red"] = red
+
+    def all_off(self) -> None:
+        for k in self._states:
+            self._states[k] = False
+
+
+class DummyEmergencyButton(EmergencyButtonInterface):
+    """No-op emergency button for headless testing and benchmarking."""
+
+    def __init__(self):
+        self._callback: Optional[Callable[[], None]] = None
+        self._pressed = False
+
+    def register_callback(self, callback: Callable[[], None]) -> None:
+        self._callback = callback
+
+    def is_pressed(self) -> bool:
+        return self._pressed
+
+    def trigger(self) -> None:
+        self._pressed = True
+        if self._callback:
+            self._callback()
+

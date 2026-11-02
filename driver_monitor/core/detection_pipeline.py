@@ -16,15 +16,20 @@ from driver_monitor.config import AppConfig
 from driver_monitor.core.event_manager import global_event_bus
 from driver_monitor.core.result_models import (
     AlertLevel, DrowsinessState, EyeStatus, FrameAnalysisResult,
-    PerformanceMetrics, SystemAlert, FaceDetectionResult
+    PerformanceMetrics, SystemAlert, FaceDetectionResult,
+    GazeDirection, DistractionState, IrisMetrics, GazeMetrics, DistractionMetrics
 )
+from driver_monitor.calibration.gaze_calibration import GazeCalibrationManager
 from driver_monitor.detection.behavior_analysis import BehaviorAnalyzer
 from driver_monitor.detection.eye_detection import EyeDetector
 from driver_monitor.detection.face_detection import FaceDetector
+from driver_monitor.detection.gaze_estimation import GazeEstimator
 from driver_monitor.detection.head_pose import HeadPoseEstimator
+from driver_monitor.detection.iris_tracking import IrisTracker
 from driver_monitor.detection.yawning_detection import YawningDetector
 from driver_monitor.engine.abnormal_movement_engine import AbnormalMovementEngine
 from driver_monitor.engine.alert_manager import AlertManager
+from driver_monitor.engine.distraction_engine import DistractionEngine
 from driver_monitor.engine.drowsiness_engine import DrowsinessEngine
 from driver_monitor.engine.emergency_simulation import EmergencySimulationEngine
 from driver_monitor.hardware.interfaces import BuzzerInterface, LEDInterface, EmergencyButtonInterface
@@ -56,18 +61,28 @@ class DetectionPipeline:
         self.head_pose_estimator = HeadPoseEstimator(config.head_pose)
         self.yawning_detector = YawningDetector(config.yawning)
         self.behavior_analyzer = BehaviorAnalyzer(config.eye, config.head_pose, config.abnormal)
+        self.iris_tracker = IrisTracker(config.gaze.iris_smoothing_alpha if hasattr(config, "gaze") else 0.5)
+        self.gaze_calibration_manager = GazeCalibrationManager()
+        self.gaze_calibration_manager.load_calibration()
+        self.gaze_estimator = GazeEstimator(config.gaze if hasattr(config, "gaze") else None, self.gaze_calibration_manager)
 
         # Decision & simulation engines
         self.drowsiness_engine = DrowsinessEngine(config.eye, config.head_pose, config.yawning)
         self.abnormal_engine = AbnormalMovementEngine(config.abnormal, config.head_pose)
+        self.distraction_engine = DistractionEngine(config.distraction if hasattr(config, "distraction") else None)
         self.alert_manager = AlertManager()
         self.emergency_sim = EmergencySimulationEngine()
 
         # Connect hardware emergency button callback
         self.emergency_button.register_callback(self.emergency_sim.trigger_emergency)
 
+        # Overlays toggle
+        self.debug_overlays_enabled = True
+
         # Performance tracking
         self._frame_count = 0
+        self._dropped_frames = 0
+        self._last_face_result: Optional[FaceDetectionResult] = None
         self._fps_timestamps: Deque[float] = deque(maxlen=30)
         self._current_fps = 0.0
         self._process = psutil.Process()
@@ -95,7 +110,10 @@ class DetectionPipeline:
             result.eyes = self.eye_detector.analyze([], timestamp=start_time)
             result.head_pose = self.head_pose_estimator.estimate([], (0, 0), timestamp=start_time)
             result.mouth = self.yawning_detector.analyze([], timestamp=start_time)
-            result.alert = self.alert_manager.update(result.drowsiness, result.abnormal, False, timestamp=start_time)
+            result.iris = self.iris_tracker.analyze([], (0, 0))
+            result.gaze = self.gaze_estimator.estimate(result.iris, result.head_pose, result.face, result.eyes, timestamp=start_time)
+            result.distraction = self.distraction_engine.evaluate(result.gaze, result.head_pose, result.face, timestamp=start_time)
+            result.alert = self.alert_manager.update(result.drowsiness, result.abnormal, result.distraction, False, timestamp=start_time)
             result.performance = PerformanceMetrics(fps=self._current_fps, source_type=source_type, source_name=source_name)
             return result
 
@@ -104,12 +122,26 @@ class DetectionPipeline:
         # -------------------------------------------------------------
         # 1. Face Detection & Tracking
         # -------------------------------------------------------------
-        # If simulated face loss is active, simulate face not found
-        if self.emergency_sim.is_face_lost_simulated:
+        interval = getattr(self.config.power, 'face_detection_interval_frames', 1)
+        reuse_previous = (
+            getattr(self.config.power, 'adaptive_processing', False)
+            and interval > 1
+            and (self._frame_count % interval != 0)
+            and self._last_face_result is not None
+            and self._last_face_result.detected
+            and not self.emergency_sim.is_face_lost_simulated
+        )
+
+        if reuse_previous:
+            face_result = self._last_face_result
+            self._dropped_frames += 1
+        elif self.emergency_sim.is_face_lost_simulated:
             face_result = self.face_detector.detect(None, timestamp=start_time)
             face_result.face_lost_duration_sec = self.emergency_sim.get_abnormal_sim_duration()
+            self._last_face_result = face_result
         else:
             face_result = self.face_detector.detect(frame_bgr, timestamp=start_time)
+            self._last_face_result = face_result
 
         result.face = face_result
 
@@ -155,6 +187,39 @@ class DetectionPipeline:
             perclos, angular_jerk = self.behavior_analyzer.update(
                 eye_metrics, head_metrics, timestamp=start_time
             )
+
+            # Iris Tracking
+            iris_metrics = self.iris_tracker.analyze(face_result.landmarks_2d, (h, w))
+            result.iris = iris_metrics
+
+            # Road Gaze Estimation
+            gaze_metrics = self.gaze_estimator.estimate(
+                iris_metrics, head_metrics, face_result, eye_metrics, timestamp=start_time
+            )
+
+            # Simulation injection for Road Gaze and Distraction
+            if self.emergency_sim.is_road_gaze_simulated:
+                gaze_metrics.direction = GazeDirection.ROAD
+                gaze_metrics.is_looking_at_road = True
+                gaze_metrics.confidence = 0.95
+                gaze_metrics.horizontal_ratio = 0.5
+                gaze_metrics.vertical_ratio = 0.5
+                gaze_metrics.dwell_time_sec = 2.5
+            elif self.emergency_sim.is_distraction_simulated:
+                sim_dur = self.emergency_sim.get_distraction_sim_duration()
+                gaze_metrics.direction = GazeDirection.DOWN
+                gaze_metrics.is_looking_at_road = False
+                gaze_metrics.confidence = 0.95
+                gaze_metrics.dwell_time_sec = sim_dur
+
+            result.gaze = gaze_metrics
+
+            # Distraction Engine Evaluation
+            distraction_metrics = self.distraction_engine.evaluate(
+                gaze_metrics, head_metrics, face_result, timestamp=start_time
+            )
+            result.distraction = distraction_metrics
+
         else:
             # Face not detected
             result.eyes = self.eye_detector.analyze([], timestamp=start_time)
@@ -162,6 +227,13 @@ class DetectionPipeline:
             result.mouth = self.yawning_detector.analyze([], timestamp=start_time)
             perclos, angular_jerk = self.behavior_analyzer.update(
                 result.eyes, result.head_pose, timestamp=start_time
+            )
+            result.iris = self.iris_tracker.analyze([], (h, w))
+            result.gaze = self.gaze_estimator.estimate(
+                result.iris, result.head_pose, face_result, result.eyes, timestamp=start_time
+            )
+            result.distraction = self.distraction_engine.evaluate(
+                result.gaze, result.head_pose, face_result, timestamp=start_time
             )
 
         # -------------------------------------------------------------
@@ -181,7 +253,11 @@ class DetectionPipeline:
         # 4. Alert Decision Arbitration
         # -------------------------------------------------------------
         alert = self.alert_manager.update(
-            drowsiness_res, abnormal_res, self.emergency_sim.is_emergency_active, timestamp=start_time
+            drowsiness_res,
+            abnormal_res,
+            result.distraction,
+            self.emergency_sim.is_emergency_active,
+            timestamp=start_time
         )
         result.alert = alert
 
@@ -226,7 +302,9 @@ class DetectionPipeline:
             memory_percent=self._cached_mem,
             resolution=(w, h),
             source_type=source_type,
-            source_name=source_name
+            source_name=source_name,
+            power_profile=getattr(self.config.power, 'profile_name', 'BALANCED'),
+            dropped_frames=self._dropped_frames
         )
 
         # -------------------------------------------------------------
@@ -279,26 +357,46 @@ class DetectionPipeline:
             cv2.rectangle(annotated, (bx, by - 22), (bx + 180, by), (18, 21, 28), -1)
             cv2.putText(annotated, tag_text, (bx + 6, by - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.45, theme_color, 1, cv2.LINE_AA)
 
-            # 3. Draw Eye Landmarks & Eye Badges
-            for pt in result.eyes.raw_left_landmarks:
-                cv2.circle(annotated, (int(pt[0]), int(pt[1])), 2, (0, 240, 255), -1)
-            for pt in result.eyes.raw_right_landmarks:
-                cv2.circle(annotated, (int(pt[0]), int(pt[1])), 2, (0, 240, 255), -1)
+            # 3. Draw Eye Landmarks & Iris Centers
+            if self.debug_overlays_enabled:
+                for pt in result.eyes.raw_left_landmarks:
+                    cv2.circle(annotated, (int(pt[0]), int(pt[1])), 2, (0, 240, 255), -1)
+                for pt in result.eyes.raw_right_landmarks:
+                    cv2.circle(annotated, (int(pt[0]), int(pt[1])), 2, (0, 240, 255), -1)
 
-            # 4. Draw Mouth Landmarks
-            for pt in result.mouth.raw_mouth_landmarks:
-                cv2.circle(annotated, (int(pt[0]), int(pt[1])), 2, (255, 120, 0), -1)
+                # Iris Centers (Cyan)
+                if result.iris.is_valid:
+                    rx, ry = result.iris.right_iris_center
+                    lx, ly = result.iris.left_iris_center
+                    cv2.circle(annotated, (int(rx), int(ry)), 3, (255, 255, 0), -1)
+                    cv2.circle(annotated, (int(lx), int(ly)), 3, (255, 255, 0), -1)
 
-            # 5. Draw 3D Head Pose Axes
-            if result.head_pose.projected_axes and len(result.head_pose.projected_axes) >= 4:
-                origin = result.head_pose.projected_axes[0]
-                x_axis = result.head_pose.projected_axes[1]
-                y_axis = result.head_pose.projected_axes[2]
-                z_axis = result.head_pose.projected_axes[3]
-                # X = Red (Roll), Y = Green (Pitch), Z = Blue (Yaw / Forward)
-                cv2.line(annotated, origin, x_axis, (0, 0, 255), 3, cv2.LINE_AA)     # Red (BGR)
-                cv2.line(annotated, origin, y_axis, (0, 255, 0), 3, cv2.LINE_AA)     # Green
-                cv2.line(annotated, origin, z_axis, (255, 0, 0), 3, cv2.LINE_AA)     # Blue
+                # 4. Draw Mouth Landmarks
+                for pt in result.mouth.raw_mouth_landmarks:
+                    cv2.circle(annotated, (int(pt[0]), int(pt[1])), 2, (255, 120, 0), -1)
+
+                # 5. Draw 3D Head Pose Axes
+                if result.head_pose.projected_axes and len(result.head_pose.projected_axes) >= 4:
+                    origin = result.head_pose.projected_axes[0]
+                    x_axis = result.head_pose.projected_axes[1]
+                    y_axis = result.head_pose.projected_axes[2]
+                    z_axis = result.head_pose.projected_axes[3]
+                    # X = Red (Roll), Y = Green (Pitch), Z = Blue (Yaw / Forward)
+                    cv2.line(annotated, origin, x_axis, (0, 0, 255), 3, cv2.LINE_AA)     # Red (BGR)
+                    cv2.line(annotated, origin, y_axis, (0, 255, 0), 3, cv2.LINE_AA)     # Green
+                    cv2.line(annotated, origin, z_axis, (255, 0, 0), 3, cv2.LINE_AA)     # Blue
+
+                # 6. Draw 2D Gaze Vector Arrow
+                if result.gaze.gaze_origin_2d and result.gaze.gaze_target_2d:
+                    orig = result.gaze.gaze_origin_2d
+                    target = result.gaze.gaze_target_2d
+                    if orig != (0, 0) and target != (0, 0):
+                        arrow_col = (0, 230, 115) if result.gaze.is_looking_at_road else (0, 165, 255)
+                        cv2.arrowedLine(annotated, orig, target, arrow_col, 2, tipLength=0.25)
+
+                # 7. Forward Road Gaze Reference Crosshair
+                cx, cy = w // 2, h // 2
+                cv2.drawMarker(annotated, (cx, cy), (90, 105, 120), cv2.MARKER_CROSS, 14, 1)
 
         # 6. Top Header HUD Bar
         header_h = 36
@@ -311,11 +409,42 @@ class DetectionPipeline:
         cv2.putText(annotated, status_text, (14, 23), cv2.FONT_HERSHEY_SIMPLEX, 0.55, theme_color, 2, cv2.LINE_AA)
 
         # Metrics right
-        telemetry_text = f"EAR: {result.eyes.avg_ear:.2f} | MAR: {result.mouth.mar:.2f} | P:{result.head_pose.pitch:+.0f} Y:{result.head_pose.yaw:+.0f} R:{result.head_pose.roll:+.0f} | {result.performance.fps:.0f} FPS"
-        (tw, _), _ = cv2.getTextSize(telemetry_text, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)
-        cv2.putText(annotated, telemetry_text, (w - tw - 14, 23), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (220, 225, 230), 1, cv2.LINE_AA)
+        telemetry_text = f"EAR:{result.eyes.avg_ear:.2f} | MAR:{result.mouth.mar:.2f} | P:{result.head_pose.pitch:+.0f} Y:{result.head_pose.yaw:+.0f} | GAZE:{result.gaze.direction.value} | {result.performance.fps:.0f}FPS"
+        (tw, _), _ = cv2.getTextSize(telemetry_text, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
+        cv2.putText(annotated, telemetry_text, (w - tw - 14, 23), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (220, 225, 230), 1, cv2.LINE_AA)
 
-        # 7. Critical Alert Warning Glow Border
+        # 7. Gaze & Road Attention HUD Badge (Bottom-left)
+        badge_w, badge_h = 250, 48
+        by0 = h - badge_h - 12
+        overlay_b = annotated.copy()
+        cv2.rectangle(overlay_b, (12, by0), (12 + badge_w, by0 + badge_h), (14, 17, 24), -1)
+        cv2.addWeighted(overlay_b, 0.85, annotated, 0.15, 0, annotated)
+        cv2.rectangle(annotated, (12, by0), (12 + badge_w, by0 + badge_h), (45, 52, 65), 1)
+
+        gaze_col = (0, 235, 120) if result.gaze.is_looking_at_road else (0, 165, 255)
+        cv2.putText(
+            annotated,
+            f"GAZE: {result.gaze.direction.value} ({result.gaze.dwell_time_sec:.1f}s)",
+            (22, by0 + 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            gaze_col,
+            1,
+            cv2.LINE_AA
+        )
+        dist_col = (0, 235, 120) if not result.distraction.is_distracted else (40, 40, 235)
+        cv2.putText(
+            annotated,
+            f"ROAD ATTN: {result.distraction.road_gaze_percent:.0f}% | {result.distraction.state.value}",
+            (22, by0 + 38),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.38,
+            dist_col,
+            1,
+            cv2.LINE_AA
+        )
+
+        # 8. Critical Alert Warning Glow Border
         if result.alert.level == AlertLevel.CRITICAL:
             cv2.rectangle(annotated, (0, 0), (w, h), (40, 40, 235), 6)
 
@@ -327,6 +456,9 @@ class DetectionPipeline:
         self.head_pose_estimator.reset()
         self.yawning_detector.reset()
         self.behavior_analyzer.reset()
+        self.iris_tracker.reset()
+        self.gaze_estimator.reset()
+        self.distraction_engine.reset()
         self.drowsiness_engine.reset()
         self.abnormal_engine.reset()
         self.emergency_sim.reset_emergency()

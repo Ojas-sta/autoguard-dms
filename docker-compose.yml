@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # -------------------------------------------------------------
+  # Profile 1: dev-video (Mac / PC / Server Headless Video Testing)
+  # -------------------------------------------------------------
+  dev-video:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: autoguard-dms:latest
+    container_name: autoguard-dev-video
+    profiles:
+      - dev-video
+    environment:
+      - PYTHONUNBUFFERED=1
+      - QT_QPA_PLATFORM=offscreen
+      - PROFILE_NAME=BALANCED
+    volumes:
+      - ./logs:/app/logs
+      - ./resources/videos:/app/resources/videos
+      - ./driver_monitor/profiles:/app/driver_monitor/profiles
+    command: ["python", "-m", "driver_monitor.benchmark", "--profile", "BALANCED", "--duration", "20.0"]
+
+  # -------------------------------------------------------------
+  # Profile 2: pi-usb (Raspberry Pi 4B with USB Webcam & ESP32 UART)
+  # -------------------------------------------------------------
+  pi-usb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: autoguard-dms:latest
+    container_name: autoguard-pi-usb
+    profiles:
+      - pi-usb
+    environment:
+      - PYTHONUNBUFFERED=1
+      - QT_QPA_PLATFORM=offscreen
+      - PROFILE_NAME=LOW_POWER
+      - ESP32_PORT=/dev/ttyUSB0
+    devices:
+      - /dev/video0:/dev/video0
+      # ESP32-S3 serial port (if plugged in):
+      # - /dev/ttyUSB0:/dev/ttyUSB0
+    volumes:
+      - ./logs:/app/logs
+      - ./driver_monitor/profiles:/app/driver_monitor/profiles
+    restart: unless-stopped
+    command: ["python", "-m", "driver_monitor.benchmark", "--profile", "LOW_POWER", "--duration", "60.0", "--camera", "0"]
+
+  # -------------------------------------------------------------
+  # Profile 3: pi-csi (Raspberry Pi 4B with Camera Module V1/V2/V3)
+  # -------------------------------------------------------------
+  pi-csi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: autoguard-dms:latest
+    container_name: autoguard-pi-csi
+    profiles:
+      - pi-csi
+    privileged: true
+    environment:
+      - PYTHONUNBUFFERED=1
+      - QT_QPA_PLATFORM=offscreen
+      - PROFILE_NAME=LOW_POWER
+    devices:
+      - /dev/vchiq:/dev/vchiq
+      - /dev/video0:/dev/video0
+    volumes:
+      - ./logs:/app/logs
+      - ./driver_monitor/profiles:/app/driver_monitor/profiles
+    restart: unless-stopped
+    command: ["python", "-m", "driver_monitor.benchmark", "--profile", "LOW_POWER", "--duration", "60.0"]

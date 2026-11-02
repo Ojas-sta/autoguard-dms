@@ -15,8 +15,8 @@ from driver_monitor.detection.head_pose import HeadPoseEstimator
 class TestHeadPose(unittest.TestCase):
     def setUp(self):
         self.config = HeadPoseConfig(
-            pitch_down_threshold=-18.0,
-            pitch_up_threshold=22.0,
+            pitch_down_threshold=16.0,
+            pitch_up_threshold=-20.0,
             yaw_turned_threshold=28.0,
             roll_tilted_threshold=22.0,
             head_down_warning_sec=2.2
@@ -99,22 +99,52 @@ class TestHeadPose(unittest.TestCase):
         self.assertTrue(m.is_head_turned)
         self.assertAlmostEqual(m.yaw, 35.0, delta=3.0)
 
+    def test_head_down(self):
+        """Scenario: Sustained Head Down."""
+        lms = self._generate_landmarks_with_pose(pitch_deg=25.0, yaw_deg=0.0, roll_deg=0.0)
+        m1 = self.estimator.estimate(lms, (480, 640), timestamp=0.0)
+        self.assertTrue(m1.is_head_down)
+        self.assertAlmostEqual(m1.pitch, 25.0, delta=3.0)
+
+        # Sustained for 2.5s
+        m2 = self.estimator.estimate(lms, (480, 640), timestamp=2.5)
+        self.assertGreaterEqual(m2.head_down_duration_sec, 2.4)
+
     def test_head_nodding_detection(self):
         """Scenario 8: Head Nodding."""
-        # Simulate downward pitch drop followed by rebound
         # Frame 1: straight
         lms0 = self._generate_landmarks_with_pose(pitch_deg=0.0, yaw_deg=0.0, roll_deg=0.0)
         self.estimator.estimate(lms0, (480, 640), timestamp=0.0)
 
-        # Frame 2-5: dipping downwards to -25 deg
+        # Frame 2-4: dipping downwards (+25 deg pitch down)
         for t in [0.2, 0.4, 0.6]:
-            lms_dip = self._generate_landmarks_with_pose(pitch_deg=-25.0, yaw_deg=0.0, roll_deg=0.0)
+            lms_dip = self._generate_landmarks_with_pose(pitch_deg=25.0, yaw_deg=0.0, roll_deg=0.0)
             self.estimator.estimate(lms_dip, (480, 640), timestamp=t)
 
-        # Frame 6: rebound back up to -2 deg
-        lms_up = self._generate_landmarks_with_pose(pitch_deg=-2.0, yaw_deg=0.0, roll_deg=0.0)
+        # Frame 5: rebound back up (+2 deg)
+        lms_up = self._generate_landmarks_with_pose(pitch_deg=2.0, yaw_deg=0.0, roll_deg=0.0)
         m_nod = self.estimator.estimate(lms_up, (480, 640), timestamp=0.9)
         self.assertGreaterEqual(m_nod.head_nod_count, 1)
+
+    def test_multi_observation_calibration(self):
+        """Test multi-observation neutral calibration sequence."""
+        self.estimator.start_multi_observation_calibration(num_observations=5)
+        self.assertTrue(self.estimator._is_calibrating)
+
+        # Feed 5 frames with steady offset (+4 pitch, +3 yaw, -2 roll)
+        lms = self._generate_landmarks_with_pose(pitch_deg=4.0, yaw_deg=3.0, roll_deg=-2.0)
+        for t in range(5):
+            m = self.estimator.estimate(lms, (480, 640), timestamp=float(t) * 0.1)
+
+        # Calibration completes on 5th frame
+        self.assertFalse(self.estimator._is_calibrating)
+        self.assertGreaterEqual(m.calibration_confidence, 0.8)
+
+        # Next frame with same physical pose should be zeroed out
+        m_cal = self.estimator.estimate(lms, (480, 640), timestamp=1.0)
+        self.assertAlmostEqual(m_cal.pitch, 0.0, delta=1.5)
+        self.assertAlmostEqual(m_cal.yaw, 0.0, delta=1.5)
+        self.assertAlmostEqual(m_cal.roll, 0.0, delta=1.5)
 
 
 if __name__ == "__main__":

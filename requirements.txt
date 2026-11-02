@@ -12,5 +12,8 @@ PyQt6>=6.5.0
 # System Diagnostics & Performance Profiling
 psutil>=5.9.0
 
+# Hardware & Serial Communications
+pyserial>=3.5
+
 # Testing Framework
 pytest>=7.4.0
