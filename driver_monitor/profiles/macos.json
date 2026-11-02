@@ -1,0 +1,32 @@
+{
+  "platform": "macos",
+  "camera": {
+    "default_device_index": 0,
+    "resolution_width": 1280,
+    "resolution_height": 720,
+    "target_fps": 30,
+    "backend": "AVFOUNDATION",
+    "warmup_frames": 5
+  },
+  "hardware": {
+    "platform_name": "macos",
+    "simulation_mode": true,
+    "buzzer_enabled": true,
+    "led_enabled": true,
+    "buzzer_volume": 0.8
+  },
+  "eye": {
+    "ear_closed_threshold": 0.22,
+    "ear_open_threshold": 0.27,
+    "closure_attention_sec": 0.8,
+    "closure_warning_sec": 1.5,
+    "closure_critical_sec": 2.5
+  },
+  "head_pose": {
+    "pitch_down_threshold": -18.0,
+    "pitch_up_threshold": 22.0,
+    "yaw_turned_threshold": 28.0,
+    "roll_tilted_threshold": 22.0,
+    "head_down_warning_sec": 2.2
+  }
+}

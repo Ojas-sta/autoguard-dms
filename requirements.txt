@@ -1,0 +1,16 @@
+# Cross-Platform Driver Monitoring System (DMS) Dependencies
+# Supports macOS (Apple Silicon M1-M5 & Intel) and Linux / Raspberry Pi OS
+
+# Core Computer Vision & AI Frameworks
+mediapipe>=0.10.14
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Desktop Cockpit GUI Framework
+PyQt6>=6.5.0
+
+# System Diagnostics & Performance Profiling
+psutil>=5.9.0
+
+# Testing Framework
+pytest>=7.4.0
