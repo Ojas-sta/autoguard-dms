@@ -13,7 +13,8 @@ from driver_monitor.detection.gaze_estimation import GazeEstimator
 
 class TestGazeEstimator(unittest.TestCase):
     def setUp(self):
-        self.calib_mgr = GazeCalibrationManager()
+        # Isolate unit tests from any user calibration profiles on disk
+        self.calib_mgr = GazeCalibrationManager(profile_path="__non_existent_test_profile__.json")
         self.estimator = GazeEstimator(config=GazeConfig(), calibration_mgr=self.calib_mgr)
 
     def _create_mock_face(self, detected=True):

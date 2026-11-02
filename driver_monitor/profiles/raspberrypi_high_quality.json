@@ -6,7 +6,8 @@
     "resolution_height": 480,
     "target_fps": 30,
     "backend": "PICAMERA2",
-    "warmup_frames": 10
+    "warmup_frames": 10,
+    "threaded_capture": true
   },
   "power": {
     "profile_name": "HIGH_QUALITY",
@@ -14,6 +15,8 @@
     "target_inference_fps": 30,
     "face_detection_interval_frames": 1,
     "adaptive_processing": false,
+    "inference_downsample_width": 480,
+    "fast_solve_pnp": true,
     "benchmark_mode": false,
     "benchmark_duration_sec": 30
   },

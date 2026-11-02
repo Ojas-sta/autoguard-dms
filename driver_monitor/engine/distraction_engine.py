@@ -40,6 +40,7 @@ class DistractionEngine:
 
         # Rolling window history for attention analytics: (timestamp, is_road)
         self._attention_history: Deque[Tuple[float, bool]] = deque(maxlen=1800)
+        self._running_road_samples: int = 0
 
         # Distraction events rolling queue for events-per-minute: (timestamp)
         self._event_timestamps: Deque[float] = deque()
@@ -86,6 +87,8 @@ class DistractionEngine:
         # 2. Check Gaze Direction
         is_road = (gaze.direction == GazeDirection.ROAD)
         self._attention_history.append((timestamp, is_road))
+        if is_road:
+            self._running_road_samples += 1
 
         if is_road:
             # Looking at road: Reset off-road timer
@@ -191,17 +194,15 @@ class DistractionEngine:
         """Calculates rolling road gaze % and events per minute."""
         cutoff = timestamp - self._config.rolling_window_sec
 
-        # 1. Road vs Off-Road Percentage over rolling window
-        road_count = 0
-        total_count = 0
-        for t, road in self._attention_history:
-            if t >= cutoff:
-                total_count += 1
-                if road:
-                    road_count += 1
+        # 1. Road vs Off-Road Percentage over rolling window in O(1) amortized
+        while self._attention_history and self._attention_history[0][0] < cutoff:
+            _, old_road = self._attention_history.popleft()
+            if old_road:
+                self._running_road_samples = max(0, self._running_road_samples - 1)
 
+        total_count = len(self._attention_history)
         if total_count > 0:
-            road_pct = (road_count / float(total_count)) * 100.0
+            road_pct = (self._running_road_samples / float(total_count)) * 100.0
             metrics.road_gaze_percent = round(road_pct, 1)
             metrics.off_road_gaze_percent = round(100.0 - road_pct, 1)
         else:
@@ -269,6 +270,7 @@ class DistractionEngine:
         self._right_count = 0
         self._distraction_event_count = 0
         self._attention_history.clear()
+        self._running_road_samples = 0
         self._event_timestamps.clear()
         self._recorded_samples.clear()
         self._current_state = DistractionState.NORMAL

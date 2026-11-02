@@ -11,6 +11,7 @@ import numpy as np
 from driver_monitor.camera.camera_interface import CameraInterface
 from driver_monitor.camera.mac_camera import MacCamera
 from driver_monitor.camera.pi_camera import PiCamera
+from driver_monitor.camera.threaded_camera import ThreadedCamera
 from driver_monitor.camera.video_source import VideoSource
 from driver_monitor.config import CameraConfig
 from driver_monitor.core.event_manager import global_event_bus
@@ -33,7 +34,7 @@ class CameraManager:
         """Initializes the default platform camera."""
         with self._lock:
             if self._platform_name == "macos":
-                self._active_source = MacCamera(
+                raw_cam = MacCamera(
                     device_index=self._config.default_device_index,
                     width=self._config.resolution_width,
                     height=self._config.resolution_height,
@@ -41,12 +42,17 @@ class CameraManager:
                     warmup_frames=self._config.warmup_frames
                 )
             else:
-                self._active_source = PiCamera(
+                raw_cam = PiCamera(
                     device_index=self._config.default_device_index,
                     width=self._config.resolution_width,
                     height=self._config.resolution_height,
                     fps=self._config.target_fps
                 )
+
+            if getattr(self._config, "threaded_capture", True):
+                self._active_source = ThreadedCamera(raw_cam)
+            else:
+                self._active_source = raw_cam
 
             success = self._active_source.open()
             self._source_type = "webcam"
@@ -64,19 +70,24 @@ class CameraManager:
                 self._active_source.release()
 
             if self._platform_name == "macos":
-                self._active_source = MacCamera(
+                raw_cam = MacCamera(
                     device_index=device_index,
                     width=self._config.resolution_width,
                     height=self._config.resolution_height,
                     fps=self._config.target_fps
                 )
             else:
-                self._active_source = PiCamera(
+                raw_cam = PiCamera(
                     device_index=device_index,
                     width=self._config.resolution_width,
                     height=self._config.resolution_height,
                     fps=self._config.target_fps
                 )
+
+            if getattr(self._config, "threaded_capture", True):
+                self._active_source = ThreadedCamera(raw_cam)
+            else:
+                self._active_source = raw_cam
 
             success = self._active_source.open()
             self._source_type = "webcam"

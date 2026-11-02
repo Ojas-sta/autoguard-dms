@@ -38,6 +38,7 @@ def run_benchmark(
     duration_sec: float = 15.0,
     video_path: Optional[str] = None,
     camera_idx: int = 0,
+    use_live_camera: bool = False,
     output_csv: Optional[str] = None
 ) -> Dict[str, float]:
     """Runs headless automated benchmark and records performance telemetry."""
@@ -81,30 +82,43 @@ def run_benchmark(
 
     # Prepare Video Source
     cap = None
+    is_live = False
     if video_path and os.path.exists(video_path):
         logger.info("Using prerecorded benchmark video: %s", video_path)
         cap = cv2.VideoCapture(video_path)
-    else:
-        # Check if webcam available, else generate synthetic video
+    elif use_live_camera:
         test_cap = cv2.VideoCapture(camera_idx)
         if test_cap.isOpened():
             ret, _ = test_cap.read()
             if ret:
                 cap = test_cap
+                is_live = True
                 logger.info("Using physical camera device index: %d", camera_idx)
             else:
                 test_cap.release()
 
-        if cap is None:
-            # Generate synthetic test video
-            synth_dir = os.path.join(base_dir, "resources", "videos")
-            os.makedirs(synth_dir, exist_ok=True)
-            synth_path = os.path.join(synth_dir, "benchmark_synth.mp4")
-            if not os.path.exists(synth_path):
-                logger.info("Generating synthetic benchmark video...")
-                generate_test_video(synth_path, scenario="normal", duration_sec=int(duration_sec + 5))
-            cap = cv2.VideoCapture(synth_path)
-            logger.info("Using synthetic benchmark stream: %s", synth_path)
+    if cap is None:
+        # Check standard preset test videos first for reproducible benchmarks
+        preset_paths = [
+            os.path.join(base_dir, "driver_monitor", "resources", "videos", "test_normal.mp4"),
+            os.path.join(base_dir, "resources", "videos", "test_normal.mp4"),
+        ]
+        for p in preset_paths:
+            if os.path.exists(p):
+                cap = cv2.VideoCapture(p)
+                logger.info("Using standard benchmark test video: %s", p)
+                break
+
+    if cap is None:
+        # Fallback: generate synthetic test video
+        synth_dir = os.path.join(base_dir, "resources", "videos")
+        os.makedirs(synth_dir, exist_ok=True)
+        synth_path = os.path.join(synth_dir, "benchmark_synth.mp4")
+        if not os.path.exists(synth_path):
+            logger.info("Generating synthetic benchmark video...")
+            generate_test_video(synth_path, scenario="normal", duration_sec=int(duration_sec + 5))
+        cap = cv2.VideoCapture(synth_path)
+        logger.info("Using synthetic benchmark stream: %s", synth_path)
 
     # Output CSV path
     if output_csv is None:
@@ -128,6 +142,9 @@ def run_benchmark(
         frame_start = time.time()
         ret, frame = cap.read()
         if not ret or frame is None:
+            if is_live:
+                time.sleep(0.01)
+                continue
             # Loop video if reached end
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
             ret, frame = cap.read()
@@ -217,6 +234,7 @@ def main():
     parser.add_argument("--duration", type=float, default=10.0, help="Benchmark run duration in seconds")
     parser.add_argument("--video", type=str, default=None, help="Optional prerecorded video path")
     parser.add_argument("--camera", type=int, default=0, help="Camera device index")
+    parser.add_argument("--live", action="store_true", help="Benchmark physical live webcam instead of reproducible test video")
     parser.add_argument("--output", type=str, default=None, help="Output CSV path")
 
     args = parser.parse_args()
@@ -225,6 +243,7 @@ def main():
         duration_sec=args.duration,
         video_path=args.video,
         camera_idx=args.camera,
+        use_live_camera=args.live,
         output_csv=args.output
     )
 

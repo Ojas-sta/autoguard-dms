@@ -155,19 +155,27 @@ class GazeCalibrationManager:
 
         if left_samples:
             left_yaws = [s[3] for s in left_samples]
-            self._profile.left_mirror_yaw = round(sum(left_yaws) / len(left_yaws), 1)
+            avg_left = sum(left_yaws) / len(left_yaws)
+            # Left mirror must be to the left of the road zone (<= road_yaw_min - 3.0)
+            self._profile.left_mirror_yaw = round(min(self._profile.road_yaw_min - 3.0, avg_left), 1)
 
         if right_samples:
             right_yaws = [s[3] for s in right_samples]
-            self._profile.right_mirror_yaw = round(sum(right_yaws) / len(right_yaws), 1)
+            avg_right = sum(right_yaws) / len(right_yaws)
+            # Right mirror must be to the right of the road zone (>= road_yaw_max + 3.0)
+            self._profile.right_mirror_yaw = round(max(self._profile.road_yaw_max + 3.0, avg_right), 1)
 
         if down_samples:
             down_pitches = [s[2] for s in down_samples]
-            self._profile.down_console_pitch = round(sum(down_pitches) / len(down_pitches), 1)
+            avg_down = sum(down_pitches) / len(down_pitches)
+            # Downward console pitch must be below road bottom (>= road_pitch_max + 2.0)
+            self._profile.down_console_pitch = round(max(self._profile.road_pitch_max + 2.0, avg_down), 1)
 
         if up_samples:
             up_pitches = [s[2] for s in up_samples]
-            self._profile.up_ceiling_pitch = round(sum(up_pitches) / len(up_pitches), 1)
+            avg_up = sum(up_pitches) / len(up_pitches)
+            # Upward pitch must be above road top (<= road_pitch_min - 2.0)
+            self._profile.up_ceiling_pitch = round(min(self._profile.road_pitch_min - 2.0, avg_up), 1)
 
         self._profile.calibration_timestamp = time.time()
         self._profile.is_calibrated = True

@@ -12,6 +12,7 @@ ENV/
 # Logs
 *.log
 driver_monitor/logs/
+logs/
 
 # OS
 .DS_Store

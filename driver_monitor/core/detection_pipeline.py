@@ -56,7 +56,8 @@ class DetectionPipeline:
         self.logger = event_logger or EventLogger()
 
         # Detection modules
-        self.face_detector = FaceDetector(min_confidence=0.5)
+        downsample_w = getattr(config.power, "inference_downsample_width", 320)
+        self.face_detector = FaceDetector(min_confidence=0.5, downsample_width=downsample_w)
         self.eye_detector = EyeDetector(config.eye)
         self.head_pose_estimator = HeadPoseEstimator(config.head_pose)
         self.yawning_detector = YawningDetector(config.yawning)
@@ -76,8 +77,8 @@ class DetectionPipeline:
         # Connect hardware emergency button callback
         self.emergency_button.register_callback(self.emergency_sim.trigger_emergency)
 
-        # Overlays toggle
-        self.debug_overlays_enabled = True
+        # Overlays toggle (disabled in LOW_POWER profile to eliminate rendering overhead on RPi 4B)
+        self.debug_overlays_enabled = (getattr(config.power, "profile_name", "") != "LOW_POWER")
 
         # Performance tracking
         self._frame_count = 0
@@ -398,11 +399,11 @@ class DetectionPipeline:
                 cx, cy = w // 2, h // 2
                 cv2.drawMarker(annotated, (cx, cy), (90, 105, 120), cv2.MARKER_CROSS, 14, 1)
 
-        # 6. Top Header HUD Bar
+        # 6. Top Header HUD Bar (Zero-copy sub-ROI alpha blending for Pi 4B efficiency)
         header_h = 36
-        overlay = annotated.copy()
-        cv2.rectangle(overlay, (0, 0), (w, header_h), (12, 15, 22), -1)
-        cv2.addWeighted(overlay, 0.85, annotated, 0.15, 0, annotated)
+        top_roi = annotated[0:header_h, 0:w]
+        top_bg = np.full_like(top_roi, (12, 15, 22))
+        cv2.addWeighted(top_bg, 0.85, top_roi, 0.15, 0, top_roi)
 
         # Status text left
         status_text = f"STATUS: {result.alert.level.value} | {result.alert.title}"
@@ -413,12 +414,12 @@ class DetectionPipeline:
         (tw, _), _ = cv2.getTextSize(telemetry_text, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
         cv2.putText(annotated, telemetry_text, (w - tw - 14, 23), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (220, 225, 230), 1, cv2.LINE_AA)
 
-        # 7. Gaze & Road Attention HUD Badge (Bottom-left)
+        # 7. Gaze & Road Attention HUD Badge (Bottom-left, zero-copy sub-ROI blend)
         badge_w, badge_h = 250, 48
         by0 = h - badge_h - 12
-        overlay_b = annotated.copy()
-        cv2.rectangle(overlay_b, (12, by0), (12 + badge_w, by0 + badge_h), (14, 17, 24), -1)
-        cv2.addWeighted(overlay_b, 0.85, annotated, 0.15, 0, annotated)
+        badge_roi = annotated[by0:by0 + badge_h, 12:12 + badge_w]
+        badge_bg = np.full_like(badge_roi, (14, 17, 24))
+        cv2.addWeighted(badge_bg, 0.85, badge_roi, 0.15, 0, badge_roi)
         cv2.rectangle(annotated, (12, by0), (12 + badge_w, by0 + badge_h), (45, 52, 65), 1)
 
         gaze_col = (0, 235, 120) if result.gaze.is_looking_at_road else (0, 165, 255)

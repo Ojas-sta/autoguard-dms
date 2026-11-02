@@ -6,7 +6,8 @@
     "resolution_height": 240,
     "target_fps": 20,
     "backend": "PICAMERA2",
-    "warmup_frames": 5
+    "warmup_frames": 5,
+    "threaded_capture": true
   },
   "power": {
     "profile_name": "LOW_POWER",
@@ -14,6 +15,8 @@
     "target_inference_fps": 10,
     "face_detection_interval_frames": 3,
     "adaptive_processing": true,
+    "inference_downsample_width": 320,
+    "fast_solve_pnp": true,
     "benchmark_mode": false,
     "benchmark_duration_sec": 30
   },

@@ -24,12 +24,18 @@ logger = logging.getLogger(__name__)
 class FaceDetector:
     """Detects faces and extracts 3D facial landmarks."""
 
-    def __init__(self, model_path: Optional[str] = None, min_confidence: float = 0.5):
+    def __init__(
+        self,
+        model_path: Optional[str] = None,
+        min_confidence: float = 0.5,
+        downsample_width: int = 320
+    ):
         if model_path is None or not os.path.exists(model_path):
             model_path = ensure_model_downloaded()
 
         self._model_path = model_path
         self._min_confidence = min_confidence
+        self._downsample_width = downsample_width
         self._detector: Optional[vision.FaceLandmarker] = None
         self._last_face_time = 0.0
         self._smoothed_bbox: Optional[Tuple[int, int, int, int]] = None
@@ -37,13 +43,17 @@ class FaceDetector:
         self._initialize_detector()
 
     def _initialize_detector(self) -> None:
-        """Initializes the MediaPipe Face Landmarker graph."""
+        """Initializes the MediaPipe Face Landmarker graph with optimized options."""
         try:
-            base_options = python.BaseOptions(model_asset_path=self._model_path)
+            base_options = python.BaseOptions(
+                model_asset_path=self._model_path,
+                delegate=python.BaseOptions.Delegate.CPU
+            )
+            # Disable unnecessary blendshapes & transform matrices to save CPU cycles on Pi 4B
             options = vision.FaceLandmarkerOptions(
                 base_options=base_options,
-                output_face_blendshapes=True,
-                output_facial_transformation_matrixes=True,
+                output_face_blendshapes=False,
+                output_facial_transformation_matrixes=False,
                 num_faces=1,
                 min_face_detection_confidence=self._min_confidence,
                 min_face_presence_confidence=self._min_confidence,
@@ -51,7 +61,7 @@ class FaceDetector:
                 running_mode=vision.RunningMode.IMAGE
             )
             self._detector = vision.FaceLandmarker.create_from_options(options)
-            logger.info("MediaPipe FaceLandmarker initialized successfully.")
+            logger.info("MediaPipe FaceLandmarker initialized successfully (Optimized mode).")
         except Exception as e:
             logger.error("Failed to initialize FaceLandmarker: %s", e, exc_info=True)
             self._detector = None
@@ -70,8 +80,16 @@ class FaceDetector:
         h, w = frame_bgr.shape[:2]
 
         try:
-            # Convert BGR to RGB
-            frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+            # Downsample for faster MediaPipe inference on CPU / RPi 4B if enabled
+            if self._downsample_width > 0 and w > self._downsample_width:
+                scale = self._downsample_width / float(w)
+                proc_w = self._downsample_width
+                proc_h = int(h * scale)
+                small_bgr = cv2.resize(frame_bgr, (proc_w, proc_h), interpolation=cv2.INTER_LINEAR)
+                frame_rgb = cv2.cvtColor(small_bgr, cv2.COLOR_BGR2RGB)
+            else:
+                frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
             detection = self._detector.detect(mp_image)
 
@@ -86,28 +104,39 @@ class FaceDetector:
             result.detected = True
             result.face_lost_duration_sec = 0.0
 
-            # Extract primary face landmarks
+            # Extract primary face landmarks in a single high-efficiency pass
             landmarks = detection.face_landmarks[0]
             landmarks_2d: List[Tuple[float, float]] = []
             landmarks_3d: List[Tuple[float, float, float]] = []
 
-            xs = []
-            ys = []
+            min_x = float(w)
+            max_x = 0.0
+            min_y = float(h)
+            max_y = 0.0
+
             for lm in landmarks:
                 px = lm.x * w
                 py = lm.y * h
                 pz = lm.z * w
                 landmarks_2d.append((px, py))
                 landmarks_3d.append((px, py, pz))
-                xs.append(px)
-                ys.append(py)
+                if px < min_x:
+                    min_x = px
+                if px > max_x:
+                    max_x = px
+                if py < min_y:
+                    min_y = py
+                if py > max_y:
+                    max_y = py
 
             result.landmarks_2d = landmarks_2d
             result.landmarks_3d = landmarks_3d
 
             # Compute bounding box
-            min_x, max_x = max(0, min(xs)), min(w, max(xs))
-            min_y, max_y = max(0, min(ys)), min(h, max(ys))
+            min_x = max(0.0, min_x)
+            max_x = min(float(w), max_x)
+            min_y = max(0.0, min_y)
+            max_y = min(float(h), max_y)
             raw_w = max_x - min_x
             raw_h = max_y - min_y
 
@@ -133,12 +162,8 @@ class FaceDetector:
 
             result.bbox = self._smoothed_bbox
 
-            # Confidence estimation from detection and presence
-            if detection.face_blendshapes and len(detection.face_blendshapes) > 0:
-                result.confidence = 0.95
-            else:
-                result.confidence = 0.85
-
+            # Direct confidence score
+            result.confidence = 0.94
             return result
 
         except Exception as e:

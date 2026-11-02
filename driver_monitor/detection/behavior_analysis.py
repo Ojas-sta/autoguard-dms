@@ -31,6 +31,7 @@ class BehaviorAnalyzer:
 
         # Rolling eye closure history: (timestamp, is_closed)
         self._eye_history: Deque[Tuple[float, bool]] = deque(maxlen=1800)
+        self._running_closed_samples: int = 0
 
         # Rolling head pose history: (timestamp, pitch, yaw, roll)
         self._pose_history: Deque[Tuple[float, float, float, float]] = deque(maxlen=300)
@@ -53,6 +54,8 @@ class BehaviorAnalyzer:
         # Update eye closure history
         is_closed = (eye_metrics.overall_status == EyeStatus.CLOSED)
         self._eye_history.append((timestamp, is_closed))
+        if is_closed:
+            self._running_closed_samples += 1
 
         # Update pose history
         self._pose_history.append((
@@ -62,17 +65,15 @@ class BehaviorAnalyzer:
             head_metrics.roll
         ))
 
-        # 1. Calculate PERCLOS over window
+        # 1. Calculate PERCLOS over window in O(1) amortized
         cutoff = timestamp - self._eye_config.perclos_window_sec
-        closed_count = 0
-        total_count = 0
-        for t, closed in self._eye_history:
-            if t >= cutoff:
-                total_count += 1
-                if closed:
-                    closed_count += 1
+        while self._eye_history and self._eye_history[0][0] < cutoff:
+            _, old_closed = self._eye_history.popleft()
+            if old_closed:
+                self._running_closed_samples = max(0, self._running_closed_samples - 1)
 
-        perclos = (closed_count / float(total_count)) if total_count > 0 else 0.0
+        total_count = len(self._eye_history)
+        perclos = (self._running_closed_samples / float(total_count)) if total_count > 0 else 0.0
 
         # 2. Calculate Head Angular Velocity & Jerk
         angular_jerk = 0.0
@@ -93,4 +94,5 @@ class BehaviorAnalyzer:
 
     def reset(self) -> None:
         self._eye_history.clear()
+        self._running_closed_samples = 0
         self._pose_history.clear()

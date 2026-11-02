@@ -107,6 +107,7 @@ class CameraConfig:
     target_fps: int = 30
     backend: str = "AVFOUNDATION"            # AVFOUNDATION, OPENCV, PICAMERA2, V4L2
     warmup_frames: int = 5
+    threaded_capture: bool = True            # Run capture in dedicated thread to eliminate buffer lag
 
 
 @dataclass
@@ -125,6 +126,8 @@ class RPiPowerConfig:
     target_inference_fps: int = 15
     face_detection_interval_frames: int = 2  # Run full face landmarker every N frames
     adaptive_processing: bool = True
+    inference_downsample_width: int = 320    # Pre-scale frame width for TFLite/MediaPipe inference
+    fast_solve_pnp: bool = True              # Use iterative Levenberg-Marquardt with warm start
     benchmark_mode: bool = False
     benchmark_duration_sec: int = 30
 
