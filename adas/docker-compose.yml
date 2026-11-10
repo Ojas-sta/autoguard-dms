@@ -1,0 +1,121 @@
+# ==============================================================================
+# Subsystem: ADAS Driver Monitoring System (DMS) — Docker Compose
+# Target Platform: Raspberry Pi 4B (ARM64 / Cortex-A72) & Desktop
+# Upstream Reference: https://github.com/Thorn-probably/adas
+# Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+# Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+# ==============================================================================
+
+version: "3.8"
+
+services:
+  # ============================================================================
+  # 1. IN-VEHICLE HEADLESS DEPLOYMENT (Default Raspberry Pi 4B Production Mode)
+  # Ultra-lightweight: ~15% CPU, 35+ FPS, Hardware GPIO 18 Active Buzzer
+  # ============================================================================
+  adas-headless:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: adas-rpi:latest
+    container_name: adas_dms_headless
+    restart: unless-stopped
+    devices:
+      - "/dev/video0:/dev/video0"
+      - "/dev/gpiomem:/dev/gpiomem"
+      - "/dev/snd:/dev/snd"
+    group_add:
+      - "video"
+      - "audio"
+      - "gpio"
+    environment:
+      - QT_QPA_PLATFORM=offscreen
+      - PYTHONUNBUFFERED=1
+    command: ["python", "main.py", "--headless", "--gpio-buzzer", "--width", "320", "--height", "240"]
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1024M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+  # ============================================================================
+  # 2. LOCAL GUI DISPLAY MODE (Raspberry Pi HDMI / Desktop X11 Forwarding)
+  # Displays the Automotive HUD overlay with cl0ud visual telemetry
+  # ============================================================================
+  adas-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: adas-rpi:latest
+    container_name: adas_dms_gui
+    restart: "no"
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_QPA_PLATFORM=xcb
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - "/tmp/.X11-unix:/tmp/.X11-unix:ro"
+    ipc: host
+    devices:
+      - "/dev/video0:/dev/video0"
+      - "/dev/gpiomem:/dev/gpiomem"
+      - "/dev/snd:/dev/snd"
+    group_add:
+      - "video"
+      - "audio"
+      - "gpio"
+    command: ["python", "main.py", "--gpio-buzzer", "--width", "320", "--height", "240"]
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1024M
+
+  # ============================================================================
+  # 3. NATIVE CSI CAMERA MODULE MODE (Raspberry Pi V4L2 / Unicam Driver)
+  # ============================================================================
+  adas-picam:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: adas-rpi:latest
+    container_name: adas_dms_picam
+    restart: unless-stopped
+    devices:
+      - "/dev/vchiq:/dev/vchiq"
+      - "/dev/dma_heap:/dev/dma_heap"
+      - "/dev/video0:/dev/video0"
+      - "/dev/gpiomem:/dev/gpiomem"
+      - "/dev/snd:/dev/snd"
+    group_add:
+      - "video"
+      - "audio"
+      - "gpio"
+    environment:
+      - QT_QPA_PLATFORM=offscreen
+      - PYTHONUNBUFFERED=1
+    command: ["python", "main.py", "--headless", "--gpio-buzzer", "--width", "320", "--height", "240"]
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1024M
+
+  # ============================================================================
+  # 4. SIMULATION & TEST MODE (No Physical Camera or GPIO Hardware Needed)
+  # Runs headless against bundled test video
+  # ============================================================================
+  adas-simulation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: adas-rpi:latest
+    container_name: adas_dms_simulation
+    restart: "no"
+    environment:
+      - QT_QPA_PLATFORM=offscreen
+      - PYTHONUNBUFFERED=1
+    command: ["python", "main.py", "--video", "/app/test_videos/test_eyes_closed.mp4", "--headless"]

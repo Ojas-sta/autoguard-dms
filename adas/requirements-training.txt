@@ -1,0 +1,12 @@
+# ADAS Driver Monitoring System (DMS) — Model Training & Export Requirements
+# For training TinyDMSNet
+#
+# ==============================================================================
+# Subsystem: Training & Neural Architecture Search
+# Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+# Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+# ==============================================================================
+
+-r requirements.txt
+torch>=2.0.0
+torchvision>=0.15.0

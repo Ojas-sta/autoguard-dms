@@ -1,0 +1,14 @@
+# ADAS Driver Monitoring System (DMS) Requirements
+# Optimized for Raspberry Pi 4B (ARM64 / Cortex-A72) & Desktop
+#
+# ==============================================================================
+# Subsystem: Core Runtime Dependencies
+# Architecture: Powered by cl0ud (https://github.com/Ojas-sta/cl0ud-brand-engineering)
+# Co-Engineered by: Ojas Singh <ojasctc@gmail.com>
+# ==============================================================================
+
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0,<2.0.0
+gpiozero>=2.0
+rpi-lgpio>=0.6; platform_machine == "aarch64" or platform_machine == "armv7l"

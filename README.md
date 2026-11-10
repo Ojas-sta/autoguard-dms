@@ -5,7 +5,7 @@
 [![Co-engineered by Ojas Singh](https://img.shields.io/badge/Co--engineered%20by-Ojas%20Singh-1E3A8A?style=for-the-badge&logoColor=white&labelColor=0B0F19)](https://github.com/Ojas-sta)
 ![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Raspberry%20Pi%204B%20%7C%20Docker-blue.svg)
 ![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-brightgreen.svg)
-![Tests](https://img.shields.io/badge/Unit%20Tests-63%2F63%20Passing-success.svg)
+![Tests](https://img.shields.io/badge/Unit%20Tests-71%2F71%20Passing-success.svg)
 ![Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)
 ![Docker](https://img.shields.io/badge/Docker-Multi--Arch%20ARM64%2FAMD64-blue.svg)
 
@@ -309,8 +309,28 @@ pytest driver_monitor/tests/ -v
 * `test_abnormal_movement.py`: Jerk analysis, head tilt, motionless slump.
 * `test_alert_manager.py`: Alert priority arbitration, LED/buzzer patterns.
 * `test_integration_scenarios.py`: Camera switching, video seek/loop, disconnect safety.
+* `adas/tests/test_adas_pipeline.py`: Pure ocular tracking, neural blendshapes, HUD, and audio alarm tests.
 
-**Result:** `63 passed in 5.27s (100% Passing)`
+**Result:** `71 passed in 6.04s (100% Passing)`
+
+---
+
+## 🚗 Standalone ADAS Fork & Raspberry Pi 4B Containerization (`adas/`)
+
+For ultra-compact, pure ocular monitoring on constrained ARM64 automotive hardware, this repository includes a dedicated fork of [Thorn-probably/adas](https://github.com/Thorn-probably/adas) in `adas/`, fully containerized for Raspberry Pi 4B:
+
+* **Engine:** MediaPipe 3D Neural Blendshapes (`eyeBlinkLeft`, `eyeBlinkRight`, `jawOpen`).
+* **Performance:** 35+ FPS on Raspberry Pi 4B CPU (<20% CPU utilization).
+* **Docker Ready:** ARM64 Dockerfile and Docker Compose with headless, GUI, and CSI camera profiles.
+* **Quick Launch:**
+  ```bash
+  # Native Python
+  ./run_adas.sh --headless --width 320 --height 240
+  
+  # Docker Compose (In-Vehicle Headless + Hardware GPIO 18 Buzzer)
+  docker compose -f docker-compose.adas.yml up adas-headless
+  ```
+See [`adas/README.md`](adas/README.md) for complete wiring diagrams, container options, and architecture details.
 
 ---
 
